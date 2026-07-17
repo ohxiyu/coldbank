@@ -278,6 +278,26 @@ private func runCoreTests() throws {
             try runner.expect(setup.profile.receiveDescriptor.hasPrefix("wpkh([73c5da0a/84'/0'/0']xpub"), "unexpected descriptor origin")
             try runner.expect(setup.profile.receiveDescriptor.hasSuffix("/0/*)#wc3n3van"), "unexpected descriptor checksum")
             try runner.expect(setup.profile.changeDescriptor.contains("/1/*)"), "missing change branch")
+            let zpub = try WalletPublicExport.bip84Slip132AccountKey(profile: setup.profile)
+            try runner.expect(
+                zpub == "zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs",
+                "unexpected BIP84 zpub"
+            )
+            try runner.expect(
+                WalletPublicExport.originAccountKey(profile: setup.profile)
+                    == "[73C5DA0A/84h/0h/0h]\(setup.profile.accountExtendedPublicKey)",
+                "unexpected origin account key"
+            )
+            let testnetSetup = try deriver.restore(words: words, network: .testnet)
+            let vpub = try WalletPublicExport.bip84Slip132AccountKey(
+                profile: testnetSetup.profile
+            )
+            try runner.expect(vpub.hasPrefix("vpub"), "testnet key was not converted to vpub")
+            try runner.expect(
+                WalletPublicExport.originAccountKey(profile: testnetSetup.profile)
+                    == "[73C5DA0A/84h/1h/0h]\(testnetSetup.profile.accountExtendedPublicKey)",
+                "unexpected testnet origin account key"
+            )
         }
 
         try runner.run("invalid mnemonic checksum") {

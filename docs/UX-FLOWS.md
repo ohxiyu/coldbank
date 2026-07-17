@@ -47,7 +47,7 @@ Back navigation always clears sensitive flow state. Backgrounding immediately pl
 | S07 | Wallet confirmation | Show fingerprint/path/network | Activate | Requires explicit match confirmation |
 | S10 | Unlock | Authenticate local user | Unlock | No fallback weaker than device policy |
 | S11 | Home | Start signing/export/security | Scan transaction | No balance or network status |
-| S12 | QR scanner | Reconstruct animated UR | Cancel | Size/time limits; clears partial state |
+| S12 | QR scanner | Reconstruct animated BC-UR or BBQr PSBT | Cancel | Locks one format; size/time limits; clears partial state |
 | S13 | Scan validation | Parse and apply policy | Continue if valid | No partial signing |
 | S14 | Transaction review | Display all effects | Review details | Recipients never collapsed |
 | S15 | Technical details | Inputs, outputs, paths, locktime | Back to review | Addresses can be revealed, not copied |
@@ -78,7 +78,7 @@ The app has no fiat conversion because it has no trusted price source offline.
 - Device-owner authentication occurs after hold completion, not as a substitute for review.
 - A transaction mutation, app background, timeout, or wallet lock invalidates the review approval.
 - Signed QR playback offers brightness and frame-rate controls but no raw export/share sheet.
-- QR scan progress is probabilistic for fountain codes; show “frames collected” and an approximate percentage, never a false exact countdown.
+- QR scan progress is probabilistic for fountain BC-UR and exact for BBQr; label the target accordingly and never show a false exact fountain countdown.
 - Destructive actions are visually separated from routine settings.
 
 ## First-run readiness checklist

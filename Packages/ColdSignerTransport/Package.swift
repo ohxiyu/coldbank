@@ -16,9 +16,11 @@ let package = Package(
         .package(url: "https://github.com/BlockchainCommons/URKit", exact: "9.0.0"),
     ],
     targets: [
+        .systemLibrary(name: "CZlib"),
         .target(
             name: "ColdSignerTransport",
             dependencies: [
+                "CZlib",
                 .product(name: "ColdSignerCore", package: "ColdSignerCorePackage"),
                 .product(name: "URKit", package: "URKit"),
             ]

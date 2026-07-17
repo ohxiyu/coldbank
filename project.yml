@@ -60,3 +60,5 @@ targets:
       - target: ColdSigner
       - package: ColdSignerCorePackage
         product: ColdSignerCore
+      - package: ColdSignerTransportPackage
+        product: ColdSignerTransport

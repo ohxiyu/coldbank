@@ -9,21 +9,32 @@ Compatibility is a tested claim, not a format guess. A coordinator is “support
 | Wallet policy | BIP84 P2WPKH single signature |
 | Account | `m/84'/coin_type'/0'` |
 | Unsigned transaction | PSBT v0 |
-| QR envelope | BC-UR v2 |
-| PSBT UR type | `crypto-psbt` |
+| QR envelope | BC-UR v2 and BBQr |
+| PSBT optical types | BC-UR `crypto-psbt` / `psbt`; BBQr `P` |
 | Signed result | Partially/completely signed PSBT, not raw transaction |
+| Return format | Same envelope family as the accepted unsigned PSBT |
 | Primary public-wallet export | Descriptor with key origin + checksum |
-| Compatibility public export | Account xpub/zpub static QR where required |
+| Compatibility public export | Origin account xpub and BIP84 SLIP-132 zpub static QR |
 
 ## Support tiers
 
-| Coordinator | v0.1 target | Pairing route | PSBT route | Release claim |
+| Coordinator | v0.1 target | Pairing route | PSBT route | Current claim |
 |---|---|---|---|---|
-| Sparrow | Required | Descriptor / supported air-gapped account QR | Animated `ur:crypto-psbt` both directions | Supported after full matrix |
-| BlueWallet | Required candidate | Watch-only account extended public key | BC-UR PSBT scan/return | Experimental until current-version matrix passes |
-| Nunchuk | Required candidate | Air-gapped key import format selected from live app | BC-UR PSBT where accepted | Experimental until current-version matrix passes |
+| Sparrow | Required | Receive/change descriptors or origin account xpub | Animated BC-UR PSBT both directions | Source-compatible; live release matrix pending |
+| BlueWallet | Required candidate | BIP84 zpub watch-only import | Animated `crypto-psbt` BC-UR both directions | Source-compatible; live release matrix pending |
+| Nunchuk | Required candidate | `[fingerprint/84h/coinh/0h]xpub` air-gapped key | Animated BBQr `P` both directions | Source-compatible; live release matrix pending |
 
-The repository does not yet claim BlueWallet or Nunchuk support. Their UI and accepted payloads can change independently, so fixture metadata records app version, platform, export route, UR type, and result.
+“Source-compatible” means the implemented payload matches the coordinator's public source or documentation as inspected on 2026-07-18. It is not a Supported claim. UI routes and accepted payloads can change independently, so fixture metadata records app version, platform, export route, optical type, and result.
+
+## Source-level evidence
+
+| Coordinator | Evidence inspected | ColdSigner implementation consequence |
+|---|---|---|
+| Sparrow | [Features](https://sparrowwallet.com/features/) describe PSBT and air-gapped fountain UR; [official repository](https://github.com/sparrowwallet/sparrow) is the release source | Emit/accept bounded BC-UR PSBT and export descriptors |
+| BlueWallet | [UR module](https://github.com/BlueWallet/BlueWallet/blob/master/blue_modules/ur/index.js) creates/decodes `CryptoPSBT`; [scanner](https://github.com/BlueWallet/BlueWallet/blob/master/screen/send/ScanQRCode.tsx) accepts `UR:CRYPTO-PSBT`; [watch-only wallet](https://github.com/BlueWallet/BlueWallet/blob/master/class/wallets/watch-only-wallet.ts) recognizes zpub as native SegWit; [offline-signing guide](https://bluewallet.io/docs/sign-offline/) documents the workflow | Emit `crypto-psbt`; export the BIP84 zpub watch-only key |
+| Nunchuk | [BBQr transaction export use case](https://github.com/nunchuk-io/nunchuk-android/blob/master/nunchuk-domain/src/main/java/com/nunchuk/android/usecase/qr/ExportBBQRTransactionUseCase.kt) uses BBQr; [signer model](https://github.com/nunchuk-io/nunchuk-android/blob/master/nunchuk-core/src/main/java/com/nunchuk/android/core/signer/SignerModel.kt) parses key-origin xpub text | Accept/emit BBQr `P`; export the exact origin account key shape |
+
+BBQr parsing follows the [BBQr specification](https://bbqr.org/BBQr.html): uppercase `B$` header, PSBT file type `P`, Base36 part counters, and required `H`, `2`, and raw-DEFLATE `Z` receive encodings. ColdSigner emits `H` in v0.1 for the smallest codec surface.
 
 ## Mandatory scenarios per coordinator
 
@@ -35,7 +46,7 @@ The repository does not yet claim BlueWallet or Nunchuk support. Their UI and ac
 | C04 | Multiple wallet inputs | All and only owned inputs signed |
 | C05 | Two recipients plus change | All outputs visible and correctly classified |
 | C06 | No-change send | No phantom change; outgoing total correct |
-| C07 | Large PSBT requiring multipart UR | Recovers with reordered/duplicate frames |
+| C07 | Large PSBT requiring multipart optical QR | Recovers with reordered/duplicate frames; BC-UR also tolerates fountain loss |
 | C08 | Non-default locktime/RBF sequence | Displayed accurately; policy outcome stable |
 | C09 | High but valid fee | Warning shown; calculated amount matches coordinator |
 | C10 | Foreign input mixed with owned input | Owned-only behavior matches policy and coordinator |
@@ -52,6 +63,7 @@ The repository does not yet claim BlueWallet or Nunchuk support. Their UI and ac
 - Duplicate PSBT map keys, unknown/proprietary fields, finalized input, and malformed compact sizes.
 - Input sum below output sum, arithmetic boundary values, dust outputs, zero-value output, extreme fee.
 - Oversized PSBT, excessive input/output counts, deep paths, invalid CBOR, wrong UR type, fragment flood.
+- Invalid BBQr header/type/Base36 counts, non-canonical Base32/hex, DEFLATE bomb, conflicting duplicate, and mixed BC-UR/BBQr session.
 - Mutation after review and background/foreground during authentication.
 
 Every negative fixture states whether the correct outcome is `transport reject`, `parse reject`, `policy reject`, `warning`, or `sign`.
