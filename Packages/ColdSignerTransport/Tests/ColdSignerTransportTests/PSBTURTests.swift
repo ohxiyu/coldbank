@@ -1,5 +1,6 @@
 import ColdSignerCore
 import Foundation
+import URKit
 import XCTest
 @testable import ColdSignerTransport
 

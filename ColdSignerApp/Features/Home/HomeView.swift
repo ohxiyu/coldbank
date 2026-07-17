@@ -32,14 +32,17 @@ struct HomeView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    Button("扫描待签名交易") {}
-                        .buttonStyle(PrimaryButtonStyle())
-                        .disabled(true)
+                    NavigationLink {
+                        PSBTScannerView(profile: profile)
+                    } label: {
+                        Text("扫描待签名交易")
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
 
                     NoticeCard(
-                        title: "交易签名尚未启用",
-                        message: "必须先完成 BC-UR 与 PSBT 策略引擎测试。当前版本只能创建、恢复、解锁、公开导出和擦除钱包。",
-                        systemImage: "hammer.fill"
+                        title: "可扫描，不会签名",
+                        message: "BC-UR 传输验证已开放；PSBT 策略审查与签名仍保持关闭。扫描成功不代表交易安全或已签名。",
+                        systemImage: "qrcode.viewfinder"
                     )
 
                     VStack(spacing: 4) {
