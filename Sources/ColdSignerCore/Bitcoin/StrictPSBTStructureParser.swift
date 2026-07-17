@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 public struct PSBTDerivationClaim: Equatable, Sendable {
@@ -19,6 +20,7 @@ public struct PSBTTransactionOutputStructure: Equatable, Sendable {
 
 public struct PSBTInputMapStructure: Equatable, Sendable {
     public let hasNonWitnessUTXO: Bool
+    public let nonWitnessUTXOCommitment: Data?
     public let witnessUTXO: PSBTTransactionOutputStructure?
     public let sighashType: UInt32?
     public let derivations: [PSBTDerivationClaim]
@@ -150,6 +152,7 @@ public enum StrictPSBTStructureParser {
         allowPartialSignatures: Bool
     ) throws -> PSBTInputMapStructure {
         var hasNonWitnessUTXO = false
+        var nonWitnessUTXOCommitment: Data?
         var witnessUTXO: PSBTTransactionOutputStructure?
         var sighashType: UInt32?
         var derivations: [PSBTDerivationClaim] = []
@@ -165,6 +168,7 @@ public enum StrictPSBTStructureParser {
                     throw ColdSignerError.invalidPSBT
                 }
                 hasNonWitnessUTXO = true
+                nonWitnessUTXOCommitment = Data(SHA256.hash(data: entry.value))
             case 0x01:
                 guard entry.key.count == 1, witnessUTXO == nil else {
                     throw ColdSignerError.invalidPSBT
@@ -197,6 +201,7 @@ public enum StrictPSBTStructureParser {
         }
         return PSBTInputMapStructure(
             hasNonWitnessUTXO: hasNonWitnessUTXO,
+            nonWitnessUTXOCommitment: nonWitnessUTXOCommitment,
             witnessUTXO: witnessUTXO,
             sighashType: sighashType,
             derivations: derivations,

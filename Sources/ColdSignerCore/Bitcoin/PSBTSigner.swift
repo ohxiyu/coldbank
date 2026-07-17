@@ -115,6 +115,14 @@ public struct PSBTSigner: Sendable {
                   signedStructure.transactionInputs == unsignedStructure.transactionInputs,
                   signedStructure.transactionOutputs == unsignedStructure.transactionOutputs,
                   signedStructure.inputMaps.count == unsignedStructure.inputMaps.count,
+                  zip(signedStructure.inputMaps, unsignedStructure.inputMaps).allSatisfy({
+                      signed, unsigned in
+                      signed.hasNonWitnessUTXO == unsigned.hasNonWitnessUTXO
+                          && signed.nonWitnessUTXOCommitment == unsigned.nonWitnessUTXOCommitment
+                          && signed.witnessUTXO == unsigned.witnessUTXO
+                          && signed.sighashType == unsigned.sighashType
+                          && signed.derivations == unsigned.derivations
+                  }),
                   signedStructure.outputMaps == unsignedStructure.outputMaps,
                   signedInputCount == unsignedStructure.transactionInputs.count,
                   signedInputs.allSatisfy({
