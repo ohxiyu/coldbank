@@ -52,6 +52,14 @@ final class PSBTURTests: XCTestCase {
         trailingCBOR.append(0x00)
         let nonCanonical = try UR(type: "crypto-psbt", cbor: trailingCBOR)
         XCTAssertThrowsError(try PSBTURCodec.decode(nonCanonical))
+
+        let nestedCBOR = try UR(type: "crypto-psbt", cbor: CBOR.array([.data(smallPSBT)]))
+        XCTAssertThrowsError(try PSBTURCodec.decode(nestedCBOR))
+
+        var nonMinimalLength = Data([0x58, UInt8(smallPSBT.count)])
+        nonMinimalLength.append(smallPSBT)
+        let nonCanonicalLength = try UR(type: "crypto-psbt", cbor: nonMinimalLength)
+        XCTAssertThrowsError(try PSBTURCodec.decode(nonCanonicalLength))
     }
 
     func testRejectsPayloadAndFragmentFloodAboveLimits() throws {
