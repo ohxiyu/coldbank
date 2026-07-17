@@ -36,6 +36,8 @@ Compatibility is a tested claim, not a format guess. A coordinator is “support
 
 BBQr parsing follows the [BBQr specification](https://bbqr.org/BBQr.html): uppercase `B$` header, PSBT file type `P`, Base36 part counters, and required `H`, `2`, and raw-DEFLATE `Z` receive encodings. ColdSigner emits `H` in v0.1 for the smallest codec surface.
 
+The checked-in [`coldsigner-testnet-c03`](../Fixtures/Public/coldsigner-testnet-c03/) reference fixes one unsigned PSBT, deterministic partial signature, normalized review, and exact BC-UR/BBQr frames. It proves ColdSigner's two internal optical paths agree on identical bytes; it does not substitute for a coordinator-produced live fixture.
+
 ## Mandatory scenarios per coordinator
 
 | ID | Scenario | Expected result |

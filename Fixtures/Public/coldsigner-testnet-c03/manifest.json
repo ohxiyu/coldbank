@@ -1,0 +1,9 @@
+{
+  "id": "coldsigner-testnet-c03",
+  "source": "ColdSigner deterministic --emit-public-interop-fixture generator",
+  "coordinator": "ColdSigner reference",
+  "coordinatorVersion": "v0.1-test-vector-1",
+  "network": "testnet",
+  "expectedOutcome": "sign",
+  "notes": "One BIP84 input, one external recipient, one verified change output, RBF, zero locktime. Base64 text keeps the fixture reviewable in source control."
+}
