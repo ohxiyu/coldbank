@@ -121,7 +121,7 @@ public struct BDKWalletDeriver: WalletDeriving {
     }
 }
 
-private extension WalletProfile.Network {
+extension WalletProfile.Network {
     var bdkNetworkKind: NetworkKind {
         switch self {
         case .bitcoin: .main

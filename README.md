@@ -2,7 +2,7 @@
 
 ColdSigner turns a spare iPhone into an open-source, air-gapped Bitcoin transaction signer.
 
-> **Status: pre-alpha. Do not use with real funds.** The repository currently contains the v0.1 product baseline and an initial SwiftUI scaffold. Signing code has not been security-audited.
+> **Status: pre-alpha. Do not use with real funds.** The repository contains a working offline key, BC-UR, PSBT review, and partial-signing path, but interoperability/device testing and independent security review are not complete.
 
 ## v0.1 target
 

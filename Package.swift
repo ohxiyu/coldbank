@@ -23,7 +23,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "ColdSignerCoreTestRunner",
-            dependencies: ["ColdSignerCore"],
+            dependencies: [
+                "ColdSignerCore",
+                .product(name: "BitcoinDevKit", package: "bdk-swift"),
+            ],
             path: "Tests/ColdSignerCoreTestRunner"
         ),
     ]

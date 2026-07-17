@@ -11,9 +11,15 @@ public enum ColdSignerError: Error, Equatable, Sendable {
     case secureStorageFailure
     case walletNotFound
     case walletLocked
+    case sessionExpired
     case policyViolation(PolicyViolation)
     case invalidTransportPayload
     case payloadTooLarge
+    case invalidPSBT
+    case duplicatePSBTKey
+    case unsupportedPSBTField
+    case signingFailed
+    case invalidSignedPSBT
     case operationCancelled
 
     public var code: String {
@@ -28,9 +34,15 @@ public enum ColdSignerError: Error, Equatable, Sendable {
         case .secureStorageFailure: "STORE-002"
         case .walletNotFound: "STORE-003"
         case .walletLocked: "SESSION-001"
+        case .sessionExpired: "SESSION-002"
         case .policyViolation(let violation): violation.code
         case .invalidTransportPayload: "UR-001"
         case .payloadTooLarge: "UR-002"
+        case .invalidPSBT: "PSBT-001"
+        case .duplicatePSBTKey: "PSBT-002"
+        case .unsupportedPSBTField: "PSBT-003"
+        case .signingFailed: "SIGN-001"
+        case .invalidSignedPSBT: "SIGN-002"
         case .operationCancelled: "FLOW-001"
         }
     }
@@ -55,12 +67,24 @@ public enum ColdSignerError: Error, Equatable, Sendable {
             "No local signer wallet was found."
         case .walletLocked:
             "Unlock the signer before continuing."
+        case .sessionExpired:
+            "The signing session expired. Scan the PSBT again."
         case .policyViolation(let violation):
             violation.userMessage
         case .invalidTransportPayload:
             "The scanned QR payload is invalid or unsupported."
         case .payloadTooLarge:
             "The scanned payload exceeds ColdSigner safety limits."
+        case .invalidPSBT:
+            "The PSBT structure is malformed or incomplete."
+        case .duplicatePSBTKey:
+            "The PSBT contains duplicate map keys and was rejected."
+        case .unsupportedPSBTField:
+            "The PSBT contains fields that ColdSigner v0.1 does not support."
+        case .signingFailed:
+            "The signing library refused this transaction. No signed result was retained."
+        case .invalidSignedPSBT:
+            "The signed PSBT failed post-signing verification and was discarded."
         case .operationCancelled:
             "The operation was cancelled."
         }

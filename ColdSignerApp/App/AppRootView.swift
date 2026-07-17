@@ -54,6 +54,7 @@ struct AppRootView: View {
         case .ready(let profile):
             HomeView(
                 profile: profile,
+                vault: model.vault,
                 onLock: model.lock,
                 onWipe: {
                     await model.wipe()
