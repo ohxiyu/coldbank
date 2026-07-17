@@ -14,7 +14,7 @@ This file records implementation evidence. It does not replace the release gates
 ## Verified locally
 
 - `make check`: required files, secret-fixture guard, and first-party network/API guard.
-- `make core-test`: 23 deterministic checks covering BIP39/BIP84, redaction, strict PSBT structure/policy, ownership/change, mutation defense, deterministic partial signing, wrong-seed/UTXO rejection, AES-GCM integrity/profile binding, and backup challenges.
+- `make core-test`: 24 deterministic checks covering BIP39/BIP84, redaction, strict PSBT structure/policy, a 512-case mutation smoke corpus, ownership/change, mutation defense, deterministic partial signing, wrong-seed/UTXO rejection, AES-GCM integrity/profile binding, and backup challenges.
 - `make generate`: clean Xcode project generation from `project.yml`.
 
 ## Non-negotiable release blockers

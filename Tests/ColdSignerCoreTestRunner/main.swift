@@ -350,6 +350,35 @@ private func runCoreTests() throws {
             }
         }
 
+        try runner.run("strict parser deterministic mutation corpus") {
+            let original = makeStructuralPSBT()
+            var state: UInt64 = 0x434f_4c44_5349_474e
+            for iteration in 0..<512 {
+                state = state &* 6_364_136_223_846_793_005 &+ 1
+                var candidate = original
+                let offset = Int(state % UInt64(candidate.count))
+                switch iteration % 4 {
+                case 0:
+                    candidate[offset] ^= UInt8(truncatingIfNeeded: state >> 24) | 1
+                case 1:
+                    candidate = Data(candidate.prefix(max(1, offset)))
+                case 2:
+                    candidate.insert(UInt8(truncatingIfNeeded: state), at: offset)
+                default:
+                    candidate.append(contentsOf: [0xfd, 0, 0])
+                }
+
+                do {
+                    _ = try StrictPSBTStructureParser.parse(candidate)
+                } catch is ColdSignerError {
+                    // Rejection is expected; the property under test is bounded,
+                    // deterministic completion without a trap or foreign error.
+                } catch {
+                    throw TestFailure(description: "mutation produced foreign error: \(error)")
+                }
+            }
+        }
+
         try runner.run("PSBT review verifies ownership and change") {
             let setup = try deriver.restore(words: words, network: .bitcoin)
             let psbt = try makePolicyPSBT(profile: setup.profile)
@@ -361,9 +390,18 @@ private func runCoreTests() throws {
             try runner.expect(review.outputCount == 2, "unexpected review output count")
             try runner.expect(review.recipients.count == 1, "recipient was hidden")
             try runner.expect(review.change.count == 1, "change was not verified")
+            try runner.expect(review.recipients[0].derivationPath == nil, "recipient gained wallet path")
+            try runner.expect(
+                review.change[0].derivationPath == "m/84'/0'/0'/1/0",
+                "unexpected change path"
+            )
             try runner.expect(review.outgoingSatoshis == 1_000, "unexpected outgoing amount")
             try runner.expect(review.feeSatoshis == 100, "unexpected fee")
             try runner.expect(review.estimatedFeeRate > 0, "missing fee rate")
+            try runner.expect(
+                review.warnings.contains(.replaceByFeeEnabled),
+                "RBF warning was omitted"
+            )
             let revalidated = try PSBTPolicyEngine().revalidate(
                 psbt: psbt,
                 against: review,
@@ -424,6 +462,9 @@ private func runCoreTests() throws {
             try runner.expect(signed.input()[0].partialSigs.count == 1, "missing partial signature")
             try runner.expect(signed.input()[0].finalScriptWitness == nil, "signer finalized input")
             try runner.expect(first.commitment == review.commitment, "review commitment changed")
+            try runner.expectColdSignerError(.unsupportedPSBTField) {
+                _ = try StrictPSBTStructureParser.parse(first.signedPSBT)
+            }
         }
 
         try runner.run("PSBT signer rejects post-review mutation") {
