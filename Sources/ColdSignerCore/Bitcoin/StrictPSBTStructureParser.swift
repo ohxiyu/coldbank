@@ -22,6 +22,7 @@ public struct PSBTInputMapStructure: Equatable, Sendable {
     public let witnessUTXO: PSBTTransactionOutputStructure?
     public let sighashType: UInt32?
     public let derivations: [PSBTDerivationClaim]
+    public let partialSignatureCount: Int
 }
 
 public struct PSBTOutputMapStructure: Equatable, Sendable {
@@ -49,6 +50,21 @@ public enum StrictPSBTStructureParser {
     public static func parse(
         _ psbt: Data,
         limits: TransactionPolicyLimits = .v0_1
+    ) throws -> StrictPSBTStructure {
+        try parse(psbt, limits: limits, allowPartialSignatures: false)
+    }
+
+    static func parseSignedResult(
+        _ psbt: Data,
+        limits: TransactionPolicyLimits = .v0_1
+    ) throws -> StrictPSBTStructure {
+        try parse(psbt, limits: limits, allowPartialSignatures: true)
+    }
+
+    private static func parse(
+        _ psbt: Data,
+        limits: TransactionPolicyLimits,
+        allowPartialSignatures: Bool
     ) throws -> StrictPSBTStructure {
         guard psbt.count <= limits.maximumPSBTBytes else {
             throw ColdSignerError.payloadTooLarge
@@ -96,7 +112,11 @@ public enum StrictPSBTStructureParser {
         inputMaps.reserveCapacity(transaction.inputs.count)
         for _ in transaction.inputs.indices {
             inputMaps.append(
-                try parseInputMap(readMap(from: &cursor), limits: limits)
+                try parseInputMap(
+                    readMap(from: &cursor),
+                    limits: limits,
+                    allowPartialSignatures: allowPartialSignatures
+                )
             )
         }
 
@@ -126,12 +146,14 @@ public enum StrictPSBTStructureParser {
 
     private static func parseInputMap(
         _ entries: [MapEntry],
-        limits: TransactionPolicyLimits
+        limits: TransactionPolicyLimits,
+        allowPartialSignatures: Bool
     ) throws -> PSBTInputMapStructure {
         var hasNonWitnessUTXO = false
         var witnessUTXO: PSBTTransactionOutputStructure?
         var sighashType: UInt32?
         var derivations: [PSBTDerivationClaim] = []
+        var partialSignatureCount = 0
 
         for entry in entries {
             guard let type = entry.key.first else {
@@ -148,6 +170,12 @@ public enum StrictPSBTStructureParser {
                     throw ColdSignerError.invalidPSBT
                 }
                 witnessUTXO = try parseTransactionOutput(entry.value)
+            case 0x02:
+                guard allowPartialSignatures else {
+                    throw ColdSignerError.unsupportedPSBTField
+                }
+                try validatePartialSignature(entry)
+                partialSignatureCount += 1
             case 0x03:
                 guard entry.key.count == 1, entry.value.count == 4 else {
                     throw ColdSignerError.invalidPSBT
@@ -171,8 +199,21 @@ public enum StrictPSBTStructureParser {
             hasNonWitnessUTXO: hasNonWitnessUTXO,
             witnessUTXO: witnessUTXO,
             sighashType: sighashType,
-            derivations: derivations
+            derivations: derivations,
+            partialSignatureCount: partialSignatureCount
         )
+    }
+
+    private static func validatePartialSignature(_ entry: MapEntry) throws {
+        guard entry.key.count == 34,
+              entry.key[entry.key.index(after: entry.key.startIndex)] == 0x02
+                || entry.key[entry.key.index(after: entry.key.startIndex)] == 0x03,
+              (9...74).contains(entry.value.count),
+              entry.value.first == 0x30,
+              entry.value.last == 0x01
+        else {
+            throw ColdSignerError.invalidSignedPSBT
+        }
     }
 
     private static func parseOutputMap(

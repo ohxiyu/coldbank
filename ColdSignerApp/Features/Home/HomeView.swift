@@ -3,6 +3,7 @@ import SwiftUI
 
 struct HomeView: View {
     let profile: WalletProfile
+    let vault: any WalletVault
     let onLock: () -> Void
     let onWipe: () async -> Bool
 
@@ -33,16 +34,16 @@ struct HomeView: View {
                     }
 
                     NavigationLink {
-                        PSBTScannerView(profile: profile)
+                        PSBTScannerView(profile: profile, vault: vault)
                     } label: {
                         Text("扫描待签名交易")
                     }
                     .buttonStyle(PrimaryButtonStyle())
 
                     NoticeCard(
-                        title: "可扫描，不会签名",
-                        message: "BC-UR 传输验证已开放；PSBT 策略审查与签名仍保持关闭。扫描成功不代表交易安全或已签名。",
-                        systemImage: "qrcode.viewfinder"
+                        title: "扫描 → 复核 → 长按签名",
+                        message: "签名前会逐项显示所有输出、费用与已验证找零，并在设备认证后再次校验 PSBT。",
+                        systemImage: "checkmark.shield"
                     )
 
                     VStack(spacing: 4) {
@@ -101,6 +102,11 @@ private struct HomeRow: View {
 }
 
 #Preview {
-    HomeView(profile: .placeholder, onLock: {}, onWipe: { true })
+    HomeView(
+        profile: .placeholder,
+        vault: PreviewWalletVault(),
+        onLock: {},
+        onWipe: { true }
+    )
         .preferredColorScheme(.dark)
 }

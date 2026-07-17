@@ -22,9 +22,13 @@ public struct PSBTReviewOutput: Equatable, Sendable {
     public let destination: String
     public let scriptDigest: String
     public let classification: PSBTReviewOutputClassification
+    public let derivationPath: String?
 }
 
 public enum PSBTReviewWarning: Equatable, Hashable, Sendable {
+    case highAbsoluteFee
+    case highEstimatedFeeRate
+    case manyOutputs
     case replaceByFeeEnabled
     case lockTimeEnabled
     case walletReceiveOutput
@@ -138,7 +142,7 @@ public struct PSBTPolicyEngine: Sendable {
                     network: profile.network.bdkNetwork
                 ).description
                 if address == nil { warnings.insert(.nonAddressOutput) }
-                if classification == .walletReceive {
+                if classification.kind == .walletReceive {
                     warnings.insert(.walletReceiveOutput)
                 }
 
@@ -147,7 +151,8 @@ public struct PSBTPolicyEngine: Sendable {
                     valueSatoshis: structureOutput.valueSatoshis,
                     destination: address ?? "Script \(digestPrefix(script))",
                     scriptDigest: digestPrefix(script),
-                    classification: classification
+                    classification: classification.kind,
+                    derivationPath: classification.derivationPath
                 )
                 let (newTotal, totalOverflow) = totalOutput.addingReportingOverflow(
                     structureOutput.valueSatoshis
@@ -157,7 +162,7 @@ public struct PSBTPolicyEngine: Sendable {
                 }
                 totalOutput = newTotal
 
-                if classification == .verifiedChange {
+                if classification.kind == .verifiedChange {
                     change.append(output)
                 } else {
                     let (newOutgoing, outgoingOverflow) = outgoing.addingReportingOverflow(
@@ -186,6 +191,10 @@ public struct PSBTPolicyEngine: Sendable {
                 baseTransactionBytes: structure.unsignedTransaction.count,
                 inputCount: structure.transactionInputs.count
             )
+            let estimatedFeeRate = Double(fee) / Double(estimatedSignedVBytes)
+            if fee >= 100_000 { warnings.insert(.highAbsoluteFee) }
+            if estimatedFeeRate >= 100 { warnings.insert(.highEstimatedFeeRate) }
+            if structure.transactionOutputs.count >= 20 { warnings.insert(.manyOutputs) }
             return PSBTReview(
                 network: profile.network,
                 recipients: recipients,
@@ -195,7 +204,7 @@ public struct PSBTPolicyEngine: Sendable {
                 outgoingSatoshis: outgoing,
                 feeSatoshis: fee,
                 estimatedSignedVBytes: estimatedSignedVBytes,
-                estimatedFeeRate: Double(fee) / Double(estimatedSignedVBytes),
+                estimatedFeeRate: estimatedFeeRate,
                 inputCount: structure.transactionInputs.count,
                 outputCount: structure.transactionOutputs.count,
                 transactionVersion: structure.transactionVersion,
@@ -325,11 +334,11 @@ public struct PSBTPolicyEngine: Sendable {
         profile: WalletProfile,
         receiveDescriptor: Descriptor,
         changeDescriptor: Descriptor
-    ) throws -> PSBTReviewOutputClassification {
+    ) throws -> (kind: PSBTReviewOutputClassification, derivationPath: String?) {
         let candidates = claims.filter {
             $0.fingerprint.uppercased() == profile.fingerprint.uppercased()
         }
-        guard !candidates.isEmpty else { return .recipient }
+        guard !candidates.isEmpty else { return (.recipient, nil) }
         guard candidates.count == 1 else {
             throw ColdSignerError.policyViolation(.ownershipNotProven)
         }
@@ -342,7 +351,13 @@ public struct PSBTPolicyEngine: Sendable {
         guard ownership.script.toBytes() == script.toBytes() else {
             throw ColdSignerError.policyViolation(.ownershipNotProven)
         }
-        return ownership.branch == 1 ? .verifiedChange : .walletReceive
+        let kind: PSBTReviewOutputClassification = ownership.branch == 1
+            ? .verifiedChange
+            : .walletReceive
+        return (
+            kind,
+            "\(profile.accountPath)/\(ownership.branch)/\(ownership.index)"
+        )
     }
 
     private func isP2WPKH(_ script: Data) -> Bool {
@@ -372,10 +387,13 @@ public struct PSBTPolicyEngine: Sendable {
 
     private func warningRank(_ warning: PSBTReviewWarning) -> Int {
         switch warning {
-        case .replaceByFeeEnabled: 0
-        case .lockTimeEnabled: 1
-        case .walletReceiveOutput: 2
-        case .nonAddressOutput: 3
+        case .highAbsoluteFee: 0
+        case .highEstimatedFeeRate: 1
+        case .manyOutputs: 2
+        case .replaceByFeeEnabled: 3
+        case .lockTimeEnabled: 4
+        case .walletReceiveOutput: 5
+        case .nonAddressOutput: 6
         }
     }
 }

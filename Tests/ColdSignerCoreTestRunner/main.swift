@@ -127,7 +127,8 @@ private func makeStructuralPSBT(
 
 private func makePolicyPSBT(
     profile: WalletProfile,
-    inputFingerprint: Data = Data([0x73, 0xc5, 0xda, 0x0a])
+    inputFingerprint: Data = Data([0x73, 0xc5, 0xda, 0x0a]),
+    includeNonWitnessUTXO: Bool = true
 ) throws -> Data {
     let network: BitcoinDevKit.Network = profile.network == .bitcoin ? .bitcoin : .testnet
     let networkKind: NetworkKind = profile.network == .bitcoin ? .main : .test
@@ -149,6 +150,34 @@ private func makePolicyPSBT(
         .toBytes()
     let recipientScript = Data([0x00, 0x14] + Array(repeating: 0x55, count: 20))
 
+    var previousTransaction = Data()
+    appendUInt32LE(2, to: &previousTransaction)
+    previousTransaction.append(1)
+    previousTransaction.append(Data(repeating: 0x22, count: 32))
+    appendUInt32LE(0, to: &previousTransaction)
+    previousTransaction.append(0)
+    appendUInt32LE(UInt32.max, to: &previousTransaction)
+    previousTransaction.append(1)
+    appendUInt64LE(2_000, to: &previousTransaction)
+    previousTransaction.append(UInt8(receiveScript.count))
+    previousTransaction.append(receiveScript)
+    appendUInt32LE(0, to: &previousTransaction)
+
+    let previousTxID = try Transaction(transactionBytes: previousTransaction)
+        .computeTxid()
+        .description
+    var previousTxIDBytes: [UInt8] = []
+    previousTxIDBytes.reserveCapacity(32)
+    var txIDOffset = previousTxID.startIndex
+    while txIDOffset < previousTxID.endIndex {
+        let next = previousTxID.index(txIDOffset, offsetBy: 2)
+        guard let byte = UInt8(previousTxID[txIDOffset..<next], radix: 16) else {
+            throw TestFailure(description: "invalid computed transaction ID")
+        }
+        previousTxIDBytes.append(byte)
+        txIDOffset = next
+    }
+
     let receiveKey = Data([
         0x03, 0x30, 0xd5, 0x4f, 0xd0, 0xdd, 0x42, 0x0a,
         0x6e, 0x5f, 0x8d, 0x36, 0x24, 0xf5, 0xf3, 0x48,
@@ -167,7 +196,7 @@ private func makePolicyPSBT(
     var transaction = Data()
     appendUInt32LE(2, to: &transaction)
     transaction.append(1)
-    transaction.append(Data(repeating: 0x11, count: 32))
+    transaction.append(contentsOf: previousTxIDBytes.reversed())
     appendUInt32LE(0, to: &transaction)
     transaction.append(0)
     appendUInt32LE(0xffff_fffd, to: &transaction)
@@ -184,6 +213,9 @@ private func makePolicyPSBT(
     appendMapEntry(key: Data([0x00]), value: transaction, to: &psbt)
     psbt.append(0)
 
+    if includeNonWitnessUTXO {
+        appendMapEntry(key: Data([0x00]), value: previousTransaction, to: &psbt)
+    }
     var witnessUTXO = Data()
     appendUInt64LE(2_000, to: &witnessUTXO)
     witnessUTXO.append(UInt8(receiveScript.count))
@@ -367,6 +399,80 @@ private func runCoreTests() throws {
                         inputFingerprint: Data([0, 0, 0, 0])
                     ),
                     profile: setup.profile
+                )
+            }
+        }
+
+        try runner.run("PSBT signer creates deterministic partial signature") {
+            let setup = try deriver.restore(words: words, network: .bitcoin)
+            let psbt = try makePolicyPSBT(profile: setup.profile)
+            let review = try PSBTPolicyEngine().review(psbt: psbt, profile: setup.profile)
+            let first = try PSBTSigner().sign(
+                psbt: psbt,
+                reviewedAs: review,
+                using: setup
+            )
+            let second = try PSBTSigner().sign(
+                psbt: psbt,
+                reviewedAs: review,
+                using: setup
+            )
+            try runner.expect(first.signedInputCount == 1, "owned input was not signed")
+            try runner.expect(first.signedPSBT != psbt, "signed PSBT was unchanged")
+            try runner.expect(first == second, "signature output was not deterministic")
+            let signed = try Psbt(psbtBase64: first.signedPSBT.base64EncodedString())
+            try runner.expect(signed.input()[0].partialSigs.count == 1, "missing partial signature")
+            try runner.expect(signed.input()[0].finalScriptWitness == nil, "signer finalized input")
+            try runner.expect(first.commitment == review.commitment, "review commitment changed")
+        }
+
+        try runner.run("PSBT signer rejects post-review mutation") {
+            let setup = try deriver.restore(words: words, network: .bitcoin)
+            let psbt = try makePolicyPSBT(profile: setup.profile)
+            let review = try PSBTPolicyEngine().review(psbt: psbt, profile: setup.profile)
+            var changed = psbt
+            changed[changed.index(before: changed.endIndex)] ^= 0x01
+            try runner.expectColdSignerError(.policyViolation(.reviewCommitmentChanged)) {
+                _ = try PSBTSigner().sign(
+                    psbt: changed,
+                    reviewedAs: review,
+                    using: setup
+                )
+            }
+        }
+
+        try runner.run("PSBT signer rejects wrong seed") {
+            let setup = try deriver.restore(words: words, network: .bitcoin)
+            let wrong = try deriver.restore(
+                words: "legal winner thank year wave sausage worth useful legal winner thank yellow"
+                    .split(separator: " ")
+                    .map(String.init),
+                network: .bitcoin
+            )
+            let mismatched = WalletSetup(mnemonic: wrong.mnemonic, profile: setup.profile)
+            let psbt = try makePolicyPSBT(profile: setup.profile)
+            let review = try PSBTPolicyEngine().review(psbt: psbt, profile: setup.profile)
+            try runner.expectColdSignerError(.policyViolation(.ownershipNotProven)) {
+                _ = try PSBTSigner().sign(
+                    psbt: psbt,
+                    reviewedAs: review,
+                    using: mismatched
+                )
+            }
+        }
+
+        try runner.run("PSBT signer requires non-witness transaction") {
+            let setup = try deriver.restore(words: words, network: .bitcoin)
+            let psbt = try makePolicyPSBT(
+                profile: setup.profile,
+                includeNonWitnessUTXO: false
+            )
+            let review = try PSBTPolicyEngine().review(psbt: psbt, profile: setup.profile)
+            try runner.expectColdSignerError(.policyViolation(.missingUTXO)) {
+                _ = try PSBTSigner().sign(
+                    psbt: psbt,
+                    reviewedAs: review,
+                    using: setup
                 )
             }
         }
