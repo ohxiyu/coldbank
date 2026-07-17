@@ -14,6 +14,9 @@ public enum ColdSignerError: Error, Equatable, Sendable {
     case policyViolation(PolicyViolation)
     case invalidTransportPayload
     case payloadTooLarge
+    case invalidPSBT
+    case duplicatePSBTKey
+    case unsupportedPSBTField
     case operationCancelled
 
     public var code: String {
@@ -31,6 +34,9 @@ public enum ColdSignerError: Error, Equatable, Sendable {
         case .policyViolation(let violation): violation.code
         case .invalidTransportPayload: "UR-001"
         case .payloadTooLarge: "UR-002"
+        case .invalidPSBT: "PSBT-001"
+        case .duplicatePSBTKey: "PSBT-002"
+        case .unsupportedPSBTField: "PSBT-003"
         case .operationCancelled: "FLOW-001"
         }
     }
@@ -61,6 +67,12 @@ public enum ColdSignerError: Error, Equatable, Sendable {
             "The scanned QR payload is invalid or unsupported."
         case .payloadTooLarge:
             "The scanned payload exceeds ColdSigner safety limits."
+        case .invalidPSBT:
+            "The PSBT structure is malformed or incomplete."
+        case .duplicatePSBTKey:
+            "The PSBT contains duplicate map keys and was rejected."
+        case .unsupportedPSBTField:
+            "The PSBT contains fields that ColdSigner v0.1 does not support."
         case .operationCancelled:
             "The operation was cancelled."
         }
