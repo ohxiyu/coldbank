@@ -1,51 +1,62 @@
+import ColdSignerCore
 import SwiftUI
 
 struct HomeView: View {
-    private let demoProfile = WalletProfile.placeholder
+    let profile: WalletProfile
+    let onLock: () -> Void
+    let onWipe: () async -> Bool
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     HStack {
-                        Label("Offline mode: user confirmed", systemImage: "airplane")
+                        Label("离线模式：用户确认", systemImage: "airplane")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
 
                         Spacer()
 
-                        Text(demoProfile.network.displayName)
+                        Text(profile.network.displayName)
                             .font(.caption.monospaced().weight(.semibold))
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Offline signer")
+                        Text("离线签名器")
                             .font(.largeTitle.bold())
 
-                        Text("Fingerprint  \(demoProfile.fingerprint)")
+                        Text("Fingerprint  \(formattedFingerprint)")
                             .font(.body.monospaced())
 
-                        Text("BIP84 · \(demoProfile.accountPath)")
+                        Text("BIP84 · \(profile.accountPath)")
                             .foregroundStyle(.secondary)
                     }
 
-                    Button("Scan transaction") {}
+                    Button("扫描待签名交易") {}
                         .buttonStyle(PrimaryButtonStyle())
                         .disabled(true)
 
                     NoticeCard(
-                        title: "Scaffold only",
-                        message: "Key creation and signing are intentionally disabled until the policy engine and test vectors are implemented.",
+                        title: "交易签名尚未启用",
+                        message: "必须先完成 BC-UR 与 PSBT 策略引擎测试。当前版本只能创建、恢复、解锁、公开导出和擦除钱包。",
                         systemImage: "hammer.fill"
                     )
 
-                    VStack(alignment: .leading, spacing: 16) {
-                        Label("Export watch-only wallet", systemImage: "qrcode")
-                        Label("Security & settings", systemImage: "lock.shield")
-                    }
-                    .foregroundStyle(.secondary)
+                    VStack(spacing: 4) {
+                        NavigationLink {
+                            PublicWalletExportView(profile: profile)
+                        } label: {
+                            HomeRow(title: "导出只读钱包", systemImage: "qrcode")
+                        }
 
-                    Text("No balance is shown because this device is intentionally offline.")
+                        NavigationLink {
+                            SecurityView(profile: profile, onLock: onLock, onWipe: onWipe)
+                        } label: {
+                            HomeRow(title: "安全与设置", systemImage: "lock.shield")
+                        }
+                    }
+
+                    Text("本机不会联网查询余额、费率或交易历史。")
                         .font(.footnote)
                         .foregroundStyle(.tertiary)
                 }
@@ -53,11 +64,40 @@ struct HomeView: View {
             }
             .navigationTitle("ColdSigner")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("锁定", action: onLock)
+                }
+            }
+        }
+    }
+
+    private var formattedFingerprint: String {
+        profile.fingerprint.enumerated().reduce(into: "") { result, item in
+            if item.offset == 4 { result.append(" ") }
+            result.append(item.element)
         }
     }
 }
 
+private struct HomeRow: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        HStack {
+            Label(title, systemImage: systemImage)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.tertiary)
+        }
+        .frame(minHeight: 52)
+        .contentShape(Rectangle())
+    }
+}
+
 #Preview {
-    HomeView()
+    HomeView(profile: .placeholder, onLock: {}, onWipe: { true })
         .preferredColorScheme(.dark)
 }

@@ -1,4 +1,4 @@
-.PHONY: bootstrap generate check test
+.PHONY: bootstrap generate check core-test test
 
 bootstrap: generate check
 
@@ -8,6 +8,9 @@ generate:
 
 check:
 	./scripts/check_repo.sh
+
+core-test:
+	./scripts/run_core_tests.sh
 
 test: generate
 	xcodebuild test \

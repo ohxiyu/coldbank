@@ -10,7 +10,9 @@ required_files=(
   docs/SECURITY-BASELINE.md
   docs/COMPATIBILITY.md
   docs/DEVELOPMENT-PLAN.md
+  docs/DEPENDENCIES.md
   project.yml
+  Package.swift
 )
 
 for relative_path in "${required_files[@]}"; do

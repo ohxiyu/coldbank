@@ -20,8 +20,11 @@ ColdSigner is a software signer running on a general-purpose phone. It is not eq
 ## Repository map
 
 ```text
-ColdSignerApp/            SwiftUI application scaffold
-ColdSignerTests/          unit tests
+ColdSignerApp/            SwiftUI application and iOS security adapters
+Sources/ColdSignerCore/   security and Bitcoin core package
+Tests/                    cross-platform core tests
+ColdSignerAppTests/       iOS application tests
+Fixtures/Public/          deterministic public interoperability vectors
 docs/                     PRD, UX, security, compatibility, and backlog
 scripts/                  local and CI validation
 .github/                  issue templates and CI
@@ -52,13 +55,14 @@ Run repository checks with:
 
 ```bash
 make check
+make core-test
 ```
 
 ## Architecture decision for v0.1
 
 The initial implementation uses `bdk-swift` for descriptors, PSBT parsing, and signing, and `URKit` for UR fountain transport. `libwally-core` remains a documented fallback, not a second active signing stack. Keeping one signing implementation reduces audit surface and avoids divergent transaction interpretation.
 
-Dependencies are pinned in `project.yml`; changes require an ADR and compatibility regression run.
+Dependencies are pinned in the root and transport `Package.swift` manifests; changes require an ADR and compatibility regression run.
 
 ## Contributing and security
 

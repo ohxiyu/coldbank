@@ -1,6 +1,7 @@
 name: ColdSigner
 options:
   bundleIdPrefix: org.coldsigner
+  developmentLanguage: zh-Hans
   deploymentTarget:
     iOS: "16.0"
   createIntermediateGroups: true
@@ -14,12 +15,10 @@ settings:
     GCC_TREAT_WARNINGS_AS_ERRORS: YES
     SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
 packages:
-  BitcoinDevKit:
-    url: https://github.com/bitcoindevkit/bdk-swift
-    exactVersion: 3.0.0
-  URKit:
-    url: https://github.com/BlockchainCommons/URKit
-    exactVersion: 9.0.0
+  ColdSignerCorePackage:
+    path: .
+  ColdSignerTransportPackage:
+    path: Packages/ColdSignerTransport
 targets:
   ColdSigner:
     type: application
@@ -30,6 +29,8 @@ targets:
       path: ColdSignerApp/Resources/Info.plist
       properties:
         CFBundleDisplayName: ColdSigner
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         NSCameraUsageDescription: ColdSigner uses the camera only to scan offline PSBT and wallet QR codes.
         UIApplicationSupportsIndirectInputEvents: true
@@ -37,13 +38,15 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.coldsigner.app
         PRODUCT_NAME: ColdSigner
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
-      - package: BitcoinDevKit
-        product: BitcoinDevKit
-      - package: URKit
-        product: URKit
+      - package: ColdSignerCorePackage
+        product: ColdSignerCore
+      - package: ColdSignerTransportPackage
+        product: ColdSignerTransport
     scheme:
       testTargets:
         - ColdSignerTests
@@ -52,6 +55,8 @@ targets:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: ColdSignerTests
+      - path: ColdSignerAppTests
     dependencies:
       - target: ColdSigner
+      - package: ColdSignerCorePackage
+        product: ColdSignerCore

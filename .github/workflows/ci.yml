@@ -18,6 +18,15 @@ jobs:
       - name: Validate repository policy
         run: make check
 
+  core-tests:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve pinned dependencies
+        run: swift package resolve
+      - name: Test ColdSignerCore
+        run: make core-test
+
   ios-build:
     runs-on: macos-15
     steps:

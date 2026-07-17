@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coldsigner.org/schemas/fixture-manifest-v1.json",
+  "title": "ColdSigner public fixture manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "source", "network", "expectedOutcome"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "source": { "type": "string" },
+    "coordinator": { "type": "string" },
+    "coordinatorVersion": { "type": "string" },
+    "network": { "enum": ["testnet", "signet", "regtest"] },
+    "expectedOutcome": {
+      "enum": ["transport-reject", "parse-reject", "policy-reject", "warning", "sign"]
+    },
+    "notes": { "type": "string" }
+  }
+}
