@@ -33,6 +33,13 @@ actor IOSWalletVault: WalletVault {
             throw ColdSignerError.secureStorageFailure
         }
 
+        try await authenticator.authenticate(
+            localizedReason: "保护并激活 ColdSigner 离线签名器"
+        )
+        // Keychain items can survive app reinstallation. With no vault record,
+        // an old wrapping key is unusable and must not block a clean setup.
+        try keyStore.delete()
+
         var keyData = try keyStore.create()
         defer { keyData.resetBytes(in: 0..<keyData.count) }
         do {

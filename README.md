@@ -39,6 +39,7 @@ Start with:
 - [Security baseline](docs/SECURITY-BASELINE.md)
 - [Compatibility matrix](docs/COMPATIBILITY.md)
 - [Development backlog](docs/DEVELOPMENT-PLAN.md)
+- [Implementation status](docs/IMPLEMENTATION-STATUS.md)
 - [GitHub repository setup](docs/GITHUB-SETUP.md)
 
 ## Local setup
