@@ -1,4 +1,5 @@
 import ColdSignerCore
+import ColdSignerTransport
 import SwiftUI
 import UIKit
 
@@ -95,9 +96,9 @@ struct PSBTScannerView: View {
                     Text("已处理 \(model.processedPartCount) 帧")
                     Spacer()
                     if let expected = model.expectedPartCount {
-                        Text("目标约 \(expected) 片")
+                        Text(progressTarget(expected))
                     } else {
-                        Text("等待 BC-UR")
+                        Text("等待 BC-UR / BBQr")
                     }
                 }
                 .font(.caption.monospacedDigit())
@@ -114,7 +115,7 @@ struct PSBTScannerView: View {
             } else {
                 NoticeCard(
                     title: "扫描后先复核，绝不直接签名",
-                    message: "只接受受限 PSBT v0。相机画面不会保存；无效、取消、超时或离开页面都会清空内存状态。",
+                    message: "接受 crypto-psbt / psbt BC-UR 与 P 类型 BBQr；只解析受限 PSBT v0。相机画面不会保存；无效、取消、超时或离开页面都会清空内存状态。",
                     systemImage: "lock.shield"
                 )
             }
@@ -235,6 +236,7 @@ struct PSBTScannerView: View {
 
                 AnimatedPSBTQRCodeView(
                     psbt: signedPSBT,
+                    format: model.transportFormat ?? .bcUR,
                     framesPerSecond: framesPerSecond
                 )
 
@@ -252,7 +254,7 @@ struct PSBTScannerView: View {
 
                 NoticeCard(
                     title: "下一步在协调器中完成",
-                    message: "让 Sparrow、BlueWallet 或 Nunchuk 扫描此二维码；由协调器检查签名、finalize 并广播。",
+                    message: "签名结果沿用输入的 \((model.transportFormat ?? .bcUR).displayName) 格式。让协调器扫描、检查签名、finalize 并广播。",
                     systemImage: "qrcode"
                 )
 
@@ -309,6 +311,13 @@ struct PSBTScannerView: View {
             satoshis / 100_000_000,
             satoshis % 100_000_000
         )
+    }
+
+    private func progressTarget(_ expected: Int) -> String {
+        if model.transportFormat?.hasExactProgress == true {
+            return "共 \(expected) 片"
+        }
+        return "目标约 \(expected) 片"
     }
 
     private func warningTitle(_ warning: PSBTReviewWarning) -> String {

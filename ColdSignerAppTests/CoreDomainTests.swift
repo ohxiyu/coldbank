@@ -9,6 +9,10 @@ final class CoreDomainTests: XCTestCase {
         XCTAssertEqual(setup.profile.fingerprint, "73C5DA0A")
         XCTAssertEqual(setup.profile.firstReceiveAddress, "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu")
         XCTAssertTrue(setup.profile.receiveDescriptor.hasSuffix("/0/*)#wc3n3van"))
+        XCTAssertEqual(
+            try WalletPublicExport.bip84Slip132AccountKey(profile: setup.profile),
+            "zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs"
+        )
     }
 
     func testEncryptedSeedRejectsWrongKey() throws {

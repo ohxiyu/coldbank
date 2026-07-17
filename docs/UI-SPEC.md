@@ -117,7 +117,7 @@ High-fee thresholds are warnings only when fee data is trustworthy. Missing fee 
 - Use verbs: “Scan transaction,” “Verify backup,” “Wipe signer.”
 - Avoid “safe,” “guaranteed,” “military-grade,” and “bank-grade.”
 - Explain blocked states in one sentence, followed by an action the user can take in the coordinator.
-- Preserve standard terms in English where translation could reduce interoperability: PSBT, BIP39, BIP84, BC-UR, fingerprint.
+- Preserve standard terms in English where translation could reduce interoperability: PSBT, BIP39, BIP84, BC-UR, BBQr, fingerprint.
 
 ## Accessibility and privacy acceptance
 

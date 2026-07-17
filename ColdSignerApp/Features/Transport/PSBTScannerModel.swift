@@ -15,14 +15,17 @@ final class PSBTScannerModel: ObservableObject {
     @Published private(set) var signedInputCount: Int?
     @Published private(set) var isSigning = false
     @Published private(set) var errorMessage: String?
+    @Published private(set) var transportFormat: PSBTOpticalFormat?
 
     private let profile: WalletProfile
     private let vault: any WalletVault
-    private var decoder = PSBTURDecoder()
+    private var urDecoder = PSBTURDecoder()
+    private var bbqrDecoder = PSBTBBQRDecoder()
     private var seenFrameDigests = Set<Data>()
     private var unsignedPSBT: Data?
     private var sessionIdentifier: UUID?
     private var sessionTimeoutTask: Task<Void, Never>?
+    private var requiresExplicitRestart = false
 
     init(profile: WalletProfile, vault: any WalletVault) {
         self.profile = profile
@@ -31,20 +34,48 @@ final class PSBTScannerModel: ObservableObject {
 
     func receive(_ value: String) {
         guard completedPSBTByteCount == nil,
+              !requiresExplicitRestart,
               value.count <= URTransportLimits().maximumFragmentCharacters,
-              value.lowercased().hasPrefix("ur:")
+              let incomingFormat = PSBTOpticalFormat.detect(value)
         else {
             return
         }
+
+        if let transportFormat, transportFormat != incomingFormat {
+            errorMessage = "输入格式在扫描过程中从 \(transportFormat.displayName) 切换为 \(incomingFormat.displayName)。为避免混淆，已清空本次扫描，请重新开始。"
+            requiresExplicitRestart = true
+            self.transportFormat = nil
+            clearDecoderState()
+            return
+        }
+        transportFormat = incomingFormat
 
         let frameDigest = Data(SHA256.hash(data: Data(value.utf8)))
         guard seenFrameDigests.insert(frameDigest).inserted else { return }
 
         do {
-            let progress = try decoder.receive(value)
-            processedPartCount = progress.processedPartCount
-            expectedPartCount = progress.expectedPartCount
-            percentComplete = progress.estimatedPercentComplete
+            let progress: (processed: Int, expected: Int?, percent: Double, psbt: Data?)
+            switch incomingFormat {
+            case .bcUR:
+                let decoded = try urDecoder.receive(value)
+                progress = (
+                    decoded.processedPartCount,
+                    decoded.expectedPartCount,
+                    decoded.estimatedPercentComplete,
+                    decoded.psbt
+                )
+            case .bbqr:
+                let decoded = try bbqrDecoder.receive(value)
+                progress = (
+                    decoded.processedPartCount,
+                    decoded.expectedPartCount,
+                    decoded.estimatedPercentComplete,
+                    decoded.psbt
+                )
+            }
+            processedPartCount = progress.processed
+            expectedPartCount = progress.expected
+            percentComplete = progress.percent
             errorMessage = nil
 
             if let psbt = progress.psbt {
@@ -63,9 +94,11 @@ final class PSBTScannerModel: ObservableObject {
             }
         } catch let error as ColdSignerError {
             errorMessage = error.errorDescription ?? error.userMessage
+            transportFormat = nil
             clearDecoderState()
         } catch {
             errorMessage = ColdSignerError.invalidTransportPayload.errorDescription
+            transportFormat = nil
             clearDecoderState()
         }
     }
@@ -85,6 +118,8 @@ final class PSBTScannerModel: ObservableObject {
         processedPartCount = 0
         expectedPartCount = nil
         percentComplete = 0
+        transportFormat = nil
+        requiresExplicitRestart = false
         clearDecoderState()
     }
 
@@ -143,8 +178,10 @@ final class PSBTScannerModel: ObservableObject {
     }
 
     private func clearDecoderState() {
-        decoder.cancel()
-        decoder = PSBTURDecoder()
+        urDecoder.cancel()
+        bbqrDecoder.cancel()
+        urDecoder = PSBTURDecoder()
+        bbqrDecoder = PSBTBBQRDecoder()
         seenFrameDigests.removeAll(keepingCapacity: false)
     }
 

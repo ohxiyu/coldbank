@@ -1,5 +1,6 @@
 import BitcoinDevKit
 import ColdSignerCore
+import CryptoKit
 import Foundation
 
 private struct TestFailure: Error, CustomStringConvertible {
@@ -57,6 +58,87 @@ private func appendMapEntry(key: Data, value: Data, to data: inout Data) {
     data.append(key)
     data.append(UInt8(value.count))
     data.append(value)
+}
+
+private func derivedAccountPublicKey(
+    profile: WalletProfile,
+    branch: UInt32,
+    index: UInt32
+) throws -> Data {
+    let accountKey = try DescriptorPublicKey.fromString(
+        publicKey: profile.accountExtendedPublicKey
+    )
+    let derived = try accountKey.derive(
+        path: DerivationPath(path: "m/\(branch)/\(index)")
+    )
+    guard let encodedKey = derived.description.split(separator: "]").last else {
+        throw TestFailure(description: "missing derived extended public key")
+    }
+    let decoded = try decodeBase58Check(String(encodedKey))
+    guard decoded.count == 78 else {
+        throw TestFailure(description: "unexpected extended public key length")
+    }
+    return Data(decoded.suffix(33))
+}
+
+private func decodeBase58Check(_ value: String) throws -> Data {
+    let alphabet = Array(
+        "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz".utf8
+    )
+    let reverse = Dictionary(
+        uniqueKeysWithValues: alphabet.enumerated().map { ($0.element, $0.offset) }
+    )
+    let characters = Array(value.utf8)
+    var decoded: [UInt8] = []
+    for character in characters {
+        guard let digit = reverse[character] else {
+            throw TestFailure(description: "invalid Base58 character")
+        }
+        var carry = digit
+        for offset in decoded.indices.reversed() {
+            carry += Int(decoded[offset]) * 58
+            decoded[offset] = UInt8(carry & 0xff)
+            carry >>= 8
+        }
+        while carry > 0 {
+            decoded.insert(UInt8(carry & 0xff), at: 0)
+            carry >>= 8
+        }
+    }
+    decoded.insert(
+        contentsOf: repeatElement(0, count: characters.prefix { $0 == alphabet[0] }.count),
+        at: 0
+    )
+    guard decoded.count >= 4 else {
+        throw TestFailure(description: "short Base58Check value")
+    }
+    let payload = Data(decoded.dropLast(4))
+    let first = Data(SHA256.hash(data: payload))
+    let checksum = Data(SHA256.hash(data: first)).prefix(4)
+    guard Data(decoded.suffix(4)) == checksum else {
+        throw TestFailure(description: "invalid Base58Check checksum")
+    }
+    return payload
+}
+
+private func publicFixtureURL(_ fileName: String) -> URL {
+    URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Fixtures/Public/coldsigner-testnet-c03")
+        .appendingPathComponent(fileName)
+}
+
+private func loadFixturePSBT(_ fileName: String) throws -> Data {
+    let encoded = try String(
+        contentsOf: publicFixtureURL(fileName),
+        encoding: .utf8
+    ).trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let decoded = Data(base64Encoded: encoded) else {
+        throw TestFailure(description: "invalid Base64 fixture: \(fileName)")
+    }
+    return decoded
 }
 
 private func makeStructuralPSBT(
@@ -128,10 +210,12 @@ private func makeStructuralPSBT(
 private func makePolicyPSBT(
     profile: WalletProfile,
     inputFingerprint: Data = Data([0x73, 0xc5, 0xda, 0x0a]),
-    includeNonWitnessUTXO: Bool = true
+    includeNonWitnessUTXO: Bool = true,
+    lockTime: UInt32 = 0
 ) throws -> Data {
     let network: BitcoinDevKit.Network = profile.network == .bitcoin ? .bitcoin : .testnet
     let networkKind: NetworkKind = profile.network == .bitcoin ? .main : .test
+    let coinType: UInt32 = profile.network == .bitcoin ? 0 : 1
     let receiveDescriptor = try Descriptor(
         descriptor: profile.receiveDescriptor,
         networkKind: networkKind
@@ -178,20 +262,8 @@ private func makePolicyPSBT(
         txIDOffset = next
     }
 
-    let receiveKey = Data([
-        0x03, 0x30, 0xd5, 0x4f, 0xd0, 0xdd, 0x42, 0x0a,
-        0x6e, 0x5f, 0x8d, 0x36, 0x24, 0xf5, 0xf3, 0x48,
-        0x2c, 0xae, 0x35, 0x0f, 0x79, 0xd5, 0xf0, 0x75,
-        0x3b, 0xf5, 0xbe, 0xef, 0x9c, 0x2d, 0x91, 0xaf,
-        0x3c,
-    ])
-    let changeKey = Data([
-        0x03, 0x02, 0x53, 0x24, 0x88, 0x8e, 0x42, 0x9a,
-        0xb8, 0xe3, 0xdb, 0xaf, 0x1f, 0x78, 0x02, 0x64,
-        0x8b, 0x9c, 0xd0, 0x1e, 0x9b, 0x41, 0x84, 0x85,
-        0xc5, 0xfa, 0x4c, 0x1b, 0x9b, 0x57, 0x00, 0xe1,
-        0xa6,
-    ])
+    let receiveKey = try derivedAccountPublicKey(profile: profile, branch: 0, index: 0)
+    let changeKey = try derivedAccountPublicKey(profile: profile, branch: 1, index: 0)
 
     var transaction = Data()
     appendUInt32LE(2, to: &transaction)
@@ -207,7 +279,7 @@ private func makePolicyPSBT(
     appendUInt64LE(900, to: &transaction)
     transaction.append(UInt8(changeScript.count))
     transaction.append(changeScript)
-    appendUInt32LE(0, to: &transaction)
+    appendUInt32LE(lockTime, to: &transaction)
 
     var psbt = Data([0x70, 0x73, 0x62, 0x74, 0xff])
     appendMapEntry(key: Data([0x00]), value: transaction, to: &psbt)
@@ -230,7 +302,7 @@ private func makePolicyPSBT(
     var receiveDerivationValue = inputFingerprint
     [
         UInt32(84) | 0x8000_0000,
-        UInt32(0) | 0x8000_0000,
+        coinType | 0x8000_0000,
         UInt32(0) | 0x8000_0000,
         0,
         0,
@@ -249,7 +321,7 @@ private func makePolicyPSBT(
     var changeDerivationValue = Data([0x73, 0xc5, 0xda, 0x0a])
     [
         UInt32(84) | 0x8000_0000,
-        UInt32(0) | 0x8000_0000,
+        coinType | 0x8000_0000,
         UInt32(0) | 0x8000_0000,
         1,
         0,
@@ -278,6 +350,26 @@ private func runCoreTests() throws {
             try runner.expect(setup.profile.receiveDescriptor.hasPrefix("wpkh([73c5da0a/84'/0'/0']xpub"), "unexpected descriptor origin")
             try runner.expect(setup.profile.receiveDescriptor.hasSuffix("/0/*)#wc3n3van"), "unexpected descriptor checksum")
             try runner.expect(setup.profile.changeDescriptor.contains("/1/*)"), "missing change branch")
+            let zpub = try WalletPublicExport.bip84Slip132AccountKey(profile: setup.profile)
+            try runner.expect(
+                zpub == "zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs",
+                "unexpected BIP84 zpub"
+            )
+            try runner.expect(
+                WalletPublicExport.originAccountKey(profile: setup.profile)
+                    == "[73C5DA0A/84h/0h/0h]\(setup.profile.accountExtendedPublicKey)",
+                "unexpected origin account key"
+            )
+            let testnetSetup = try deriver.restore(words: words, network: .testnet)
+            let vpub = try WalletPublicExport.bip84Slip132AccountKey(
+                profile: testnetSetup.profile
+            )
+            try runner.expect(vpub.hasPrefix("vpub"), "testnet key was not converted to vpub")
+            try runner.expect(
+                WalletPublicExport.originAccountKey(profile: testnetSetup.profile)
+                    == "[73C5DA0A/84h/1h/0h]\(testnetSetup.profile.accountExtendedPublicKey)",
+                "unexpected testnet origin account key"
+            )
         }
 
         try runner.run("invalid mnemonic checksum") {
@@ -402,6 +494,18 @@ private func runCoreTests() throws {
                 review.warnings.contains(.replaceByFeeEnabled),
                 "RBF warning was omitted"
             )
+            try runner.expect(
+                !review.warnings.contains(.lockTimeEnabled),
+                "zero locktime was presented as enabled"
+            )
+            let lockTimeReview = try PSBTPolicyEngine().review(
+                psbt: makePolicyPSBT(profile: setup.profile, lockTime: 840_000),
+                profile: setup.profile
+            )
+            try runner.expect(
+                lockTimeReview.warnings.contains(.lockTimeEnabled),
+                "nonzero enabled locktime warning was omitted"
+            )
             let revalidated = try PSBTPolicyEngine().revalidate(
                 psbt: psbt,
                 against: review,
@@ -465,6 +569,39 @@ private func runCoreTests() throws {
             try runner.expectColdSignerError(.unsupportedPSBTField) {
                 _ = try StrictPSBTStructureParser.parse(first.signedPSBT)
             }
+        }
+
+        try runner.run("public testnet C03 fixture matches signer") {
+            let setup = try deriver.restore(words: words, network: .testnet)
+            let generatedUnsigned = try makePolicyPSBT(profile: setup.profile)
+            let fixtureUnsigned = try loadFixturePSBT("unsigned.psbt.base64")
+            try runner.expect(
+                fixtureUnsigned == generatedUnsigned,
+                "checked-in unsigned fixture drifted"
+            )
+            let review = try PSBTPolicyEngine().review(
+                psbt: fixtureUnsigned,
+                profile: setup.profile
+            )
+            try runner.expect(review.network == .testnet, "fixture network drifted")
+            try runner.expect(review.outgoingSatoshis == 1_000, "fixture outgoing amount drifted")
+            try runner.expect(review.feeSatoshis == 100, "fixture fee drifted")
+            try runner.expect(review.change.first?.derivationPath == "m/84'/1'/0'/1/0", "fixture change path drifted")
+            try runner.expect(review.warnings == [.replaceByFeeEnabled], "fixture warnings drifted")
+
+            let signed = try PSBTSigner().sign(
+                psbt: fixtureUnsigned,
+                reviewedAs: review,
+                using: setup
+            )
+            let fixtureSigned = try loadFixturePSBT("signed.psbt.base64")
+            try runner.expect(
+                signed.signedPSBT == fixtureSigned,
+                "checked-in signed fixture drifted"
+            )
+            _ = try JSONSerialization.jsonObject(
+                with: Data(contentsOf: publicFixtureURL("decoded.json"))
+            )
         }
 
         try runner.run("PSBT signer rejects post-review mutation") {
@@ -575,4 +712,37 @@ private func runCoreTests() throws {
     print("Core test runner passed \(runner.passed) checks.")
 }
 
-try runCoreTests()
+private func emitPublicInteropFixture() throws {
+    let words = Array(repeating: "abandon", count: 11) + ["about"]
+    let setup = try BDKWalletDeriver().restore(words: words, network: .testnet)
+    let unsigned = try makePolicyPSBT(profile: setup.profile)
+    let review = try PSBTPolicyEngine().review(psbt: unsigned, profile: setup.profile)
+    let signed = try PSBTSigner().sign(
+        psbt: unsigned,
+        reviewedAs: review,
+        using: setup
+    )
+    print("UNSIGNED_PSBT_BASE64=\(unsigned.base64EncodedString())")
+    print("SIGNED_PSBT_BASE64=\(signed.signedPSBT.base64EncodedString())")
+    print("FINGERPRINT=\(setup.profile.fingerprint)")
+    print("FIRST_RECEIVE_ADDRESS=\(setup.profile.firstReceiveAddress)")
+    print("ORIGIN_ACCOUNT_KEY=\(WalletPublicExport.originAccountKey(profile: setup.profile))")
+    print("BIP84_VPUB=\(try WalletPublicExport.bip84Slip132AccountKey(profile: setup.profile))")
+    print("RECEIVE_DESCRIPTOR=\(setup.profile.receiveDescriptor)")
+    print("CHANGE_DESCRIPTOR=\(setup.profile.changeDescriptor)")
+    print("REVIEW_COMMITMENT=\(review.commitment.displayValue)")
+    print("RECIPIENT_DESTINATION=\(review.recipients[0].destination)")
+    print("CHANGE_DESTINATION=\(review.change[0].destination)")
+    print("CHANGE_PATH=\(review.change[0].derivationPath ?? "")")
+    print("OUTGOING_SATS=\(review.outgoingSatoshis)")
+    print("FEE_SATS=\(review.feeSatoshis)")
+    print("ESTIMATED_FEE_RATE=\(review.estimatedFeeRate)")
+    print("WARNINGS=\(review.warnings)")
+    print("SIGNED_INPUT_COUNT=\(signed.signedInputCount)")
+}
+
+if CommandLine.arguments.contains("--emit-public-interop-fixture") {
+    try emitPublicInteropFixture()
+} else {
+    try runCoreTests()
+}

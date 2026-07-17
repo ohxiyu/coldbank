@@ -1,0 +1,34 @@
+{
+  "network": "testnet",
+  "wallet": {
+    "fingerprint": "73C5DA0A",
+    "firstReceiveAddress": "tb1q6rz28mcfaxtmd6v789l9rrlrusdprr9pqcpvkl",
+    "originAccountKey": "[73C5DA0A/84h/1h/0h]tpubDC8msFGeGuwnKG9Upg7DM2b4DaRqg3CUZa5g8v2SRQ6K4NSkxUgd7HsL2XVWbVm39yBA4LAxysQAm397zwQSQoQgewGiYZqrA9DsP4zbQ1M",
+    "bip84Vpub": "vpub5Y6cjg78GGuNLsaPhmYsiw4gYX3HoQiRBiSwDaBXKUafCt9bNwWQiitDk5VZ5BVxYnQdwoTyXSs2JHRPAgjAvtbBrf8ZhDYe2jWAqvZVnsc",
+    "receiveDescriptor": "wpkh([73c5da0a/84'/1'/0']tpubDC8msFGeGuwnKG9Upg7DM2b4DaRqg3CUZa5g8v2SRQ6K4NSkxUgd7HsL2XVWbVm39yBA4LAxysQAm397zwQSQoQgewGiYZqrA9DsP4zbQ1M/0/*)#2ag6nxcd",
+    "changeDescriptor": "wpkh([73c5da0a/84'/1'/0']tpubDC8msFGeGuwnKG9Upg7DM2b4DaRqg3CUZa5g8v2SRQ6K4NSkxUgd7HsL2XVWbVm39yBA4LAxysQAm397zwQSQoQgewGiYZqrA9DsP4zbQ1M/1/*)#mfdmwng4"
+  },
+  "transaction": {
+    "inputCount": 1,
+    "outputCount": 2,
+    "recipient": {
+      "index": 0,
+      "valueSatoshis": 1000,
+      "destination": "tb1q24242424242424242424242424242424dnlrrg"
+    },
+    "change": {
+      "index": 1,
+      "valueSatoshis": 900,
+      "destination": "tb1q9u62588spffmq4dzjxsr5l297znf3z6j5p2688",
+      "derivationPath": "m/84'/1'/0'/1/0"
+    },
+    "feeSatoshis": 100,
+    "outgoingSatoshis": 1000,
+    "estimatedFeeRate": 0.7092198581560284,
+    "lockTime": 0,
+    "warnings": ["replaceByFeeEnabled"],
+    "reviewCommitment": "6a72e07846a1",
+    "signedInputCount": 1,
+    "finalized": false
+  }
+}

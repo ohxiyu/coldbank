@@ -5,9 +5,9 @@ Only deterministic, publicly documented test vectors and testnet/signet transact
 Each fixture directory must contain:
 
 - `manifest.json` matching `manifest.schema.json`;
-- `unsigned.psbt` and expected `signed.psbt` where applicable;
+- `unsigned.psbt.base64` and expected `signed.psbt.base64` where applicable;
 - `decoded.json` with normalized semantic expectations;
-- deterministic UR parts when the test needs transport equivalence;
+- deterministic BC-UR and/or BBQr parts when the test needs transport equivalence;
 - reproduction steps and upstream coordinator version.
 
-The first fixture set will be added with the Sparrow interoperability milestone.
+Base64 text is preferred over opaque binary so review, secret scanning, and cross-platform fixture loading stay deterministic. Decode only into a temporary directory for a coordinator that requires a `.psbt` file.

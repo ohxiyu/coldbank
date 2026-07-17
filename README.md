@@ -2,14 +2,14 @@
 
 ColdSigner turns a spare iPhone into an open-source, air-gapped Bitcoin transaction signer.
 
-> **Status: pre-alpha. Do not use with real funds.** The repository contains a working offline key, BC-UR, PSBT review, and partial-signing path, but interoperability/device testing and independent security review are not complete.
+> **Status: pre-alpha. Do not use with real funds.** The repository contains a working offline key, BC-UR/BBQr transport, PSBT review, and partial-signing path, but live coordinator/device testing and independent security review are not complete.
 
 ## v0.1 target
 
 - Native Swift and SwiftUI app, iOS 16+
 - BIP39 key creation and recovery
 - BIP84 single-signature wallets (`wpkh`, mainnet first)
-- PSBT v0 import and export over animated BC-UR QR
+- PSBT v0 import and export over animated BC-UR or BBQr QR
 - Human-verifiable transaction review before signing
 - Sparrow end-to-end compatibility as the release gate
 - BlueWallet and Nunchuk compatibility tracked with explicit test fixtures
@@ -61,7 +61,7 @@ make core-test
 
 ## Architecture decision for v0.1
 
-The initial implementation uses `bdk-swift` for descriptors, PSBT parsing, and signing, and `URKit` for UR fountain transport. `libwally-core` remains a documented fallback, not a second active signing stack. Keeping one signing implementation reduces audit surface and avoids divergent transaction interpretation.
+The initial implementation uses `bdk-swift` for descriptors, PSBT parsing, and signing, `URKit` for UR fountain transport, and the platform zlib for bounded BBQr decompression. `libwally-core` remains a documented fallback, not a second active signing stack. Keeping one signing implementation reduces audit surface and avoids divergent transaction interpretation.
 
 Dependencies are pinned in the root and transport `Package.swift` manifests; changes require an ADR and compatibility regression run.
 

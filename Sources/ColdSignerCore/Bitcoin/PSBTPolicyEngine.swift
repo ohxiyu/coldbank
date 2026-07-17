@@ -185,7 +185,9 @@ public struct PSBTPolicyEngine: Sendable {
             }
 
             if transaction.isExplicitlyRbf() { warnings.insert(.replaceByFeeEnabled) }
-            if transaction.isLockTimeEnabled() { warnings.insert(.lockTimeEnabled) }
+            if structure.lockTime != 0, transaction.isLockTimeEnabled() {
+                warnings.insert(.lockTimeEnabled)
+            }
 
             let estimatedSignedVBytes = estimatedP2WPKHSignedVBytes(
                 baseTransactionBytes: structure.unsignedTransaction.count,
