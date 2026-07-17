@@ -85,7 +85,7 @@ Exit: Sparrow is Supported; BlueWallet and Nunchuk have evidence-based status.
 | CS-405 | Nunchuk import/PSBT capability spike | 3d | M2, M3 | Exact live format/version documented |
 | CS-406 | Nunchuk fixtures or explicit limitation | 3d | CS-405 | Claim matches evidence |
 | CS-407 | BBQr PSBT transport and format-locked UI | 4d | M2, CS-405 | H/2/Z vectors pass; signed result echoes input family |
-| CS-407 | Second-tester reproduction | 2d | CS-402, CS-404, CS-406 | Signed record by independent tester |
+| CS-408 | Second-tester reproduction | 2d | CS-402, CS-404, CS-406 | Signed record by independent tester |
 
 ## M5 — hardening and testnet alpha
 

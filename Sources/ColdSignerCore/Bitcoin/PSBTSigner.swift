@@ -112,6 +112,8 @@ public struct PSBTSigner: Sendable {
             let signedInputCount = signedInputs.filter { !$0.partialSigs.isEmpty }.count
 
             guard signedStructure.unsignedTransaction == unsignedStructure.unsignedTransaction,
+                  signedStructure.globalXpubCommitments
+                    == unsignedStructure.globalXpubCommitments,
                   signedStructure.transactionInputs == unsignedStructure.transactionInputs,
                   signedStructure.transactionOutputs == unsignedStructure.transactionOutputs,
                   signedStructure.inputMaps.count == unsignedStructure.inputMaps.count,

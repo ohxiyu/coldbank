@@ -13,6 +13,7 @@ struct KeychainWrappingKeyStore {
             SecRandomCopyBytes(kSecRandomDefault, bytes.count, bytes.baseAddress!)
         }
         guard randomStatus == errSecSuccess else {
+            keyData.resetBytes(in: 0..<keyData.count)
             throw ColdSignerError.secureStorageUnavailable
         }
 
@@ -31,6 +32,7 @@ struct KeychainWrappingKeyStore {
         query[kSecValueData] = keyData
 
         guard SecItemAdd(query as CFDictionary, nil) == errSecSuccess else {
+            keyData.resetBytes(in: 0..<keyData.count)
             throw ColdSignerError.secureStorageFailure
         }
         return keyData

@@ -55,6 +55,7 @@ actor IOSWalletVault: WalletVault {
             )
             try writeRecord(record)
         } catch {
+            try? fileManager.removeItem(at: recordURL)
             try? keyStore.delete()
             throw ColdSignerError.secureStorageFailure
         }

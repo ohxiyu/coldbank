@@ -1,0 +1,137 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:0cf46e7a-a8a4-4f3a-b470-96eb7e9b8c01",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-07-18T00:00:00Z",
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:generic/coldsigner@0.1.0",
+      "name": "ColdSigner",
+      "version": "0.1.0",
+      "licenses": [
+        { "license": { "id": "MIT" } }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/bitcoindevkit/bdk-swift@3.0.0",
+      "name": "bdk-swift",
+      "version": "3.0.0",
+      "purl": "pkg:github/bitcoindevkit/bdk-swift@3.0.0",
+      "licenses": [
+        { "license": { "id": "MIT" } },
+        { "license": { "id": "Apache-2.0" } }
+      ],
+      "externalReferences": [
+        { "type": "vcs", "url": "https://github.com/bitcoindevkit/bdk-swift" }
+      ],
+      "properties": [
+        { "name": "coldsigner:git-revision", "value": "5bc9c3cddf203f6aa147d77364782bf095e4f84e" },
+        { "name": "coldsigner:binary-artifact", "value": "bdkFFI.xcframework.zip" },
+        { "name": "coldsigner:binary-sha256", "value": "cfc94aa657c1fe118366496cc9d55f979f8e68d9130a5526c16e34ec4cc70047" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/BlockchainCommons/URKit@9.0.0",
+      "name": "URKit",
+      "version": "9.0.0",
+      "purl": "pkg:github/BlockchainCommons/URKit@9.0.0",
+      "licenses": [
+        { "license": { "name": "BSD-2-Clause-Patent" } }
+      ],
+      "externalReferences": [
+        { "type": "vcs", "url": "https://github.com/BlockchainCommons/URKit" }
+      ],
+      "properties": [
+        { "name": "coldsigner:git-revision", "value": "4323721f7f91331d8cfa64ee54cfbaba106a5b20" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/wolfmcnally/WolfBase@5.3.1",
+      "name": "WolfBase",
+      "version": "5.3.1",
+      "purl": "pkg:github/wolfmcnally/WolfBase@5.3.1",
+      "licenses": [
+        { "license": { "id": "MIT" } }
+      ],
+      "externalReferences": [
+        { "type": "vcs", "url": "https://github.com/wolfmcnally/WolfBase" }
+      ],
+      "properties": [
+        { "name": "coldsigner:git-revision", "value": "d7219c703316956c42a7f47f926a442d082f043f" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/apple/swift-algorithms@1.2.1",
+      "name": "swift-algorithms",
+      "version": "1.2.1",
+      "purl": "pkg:github/apple/swift-algorithms@1.2.1",
+      "licenses": [
+        { "license": { "id": "Apache-2.0" } }
+      ],
+      "externalReferences": [
+        { "type": "vcs", "url": "https://github.com/apple/swift-algorithms" }
+      ],
+      "properties": [
+        { "name": "coldsigner:git-revision", "value": "87e50f483c54e6efd60e885f7f5aa946cee68023" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/apple/swift-numerics@1.1.1",
+      "name": "swift-numerics",
+      "version": "1.1.1",
+      "purl": "pkg:github/apple/swift-numerics@1.1.1",
+      "licenses": [
+        { "license": { "id": "Apache-2.0" } }
+      ],
+      "externalReferences": [
+        { "type": "vcs", "url": "https://github.com/apple/swift-numerics" }
+      ],
+      "properties": [
+        { "name": "coldsigner:git-revision", "value": "0c0290ff6b24942dadb83a929ffaaa1481df04a2" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/apple-libz@platform-sdk",
+      "name": "Apple platform zlib (libz)",
+      "version": "platform-sdk",
+      "licenses": [
+        { "license": { "id": "Zlib" } }
+      ],
+      "properties": [
+        { "name": "coldsigner:supply", "value": "Apple SDK system library; not bundled by SwiftPM" },
+        { "name": "coldsigner:usage", "value": "bounded raw-DEFLATE BBQr decoding only" }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:generic/coldsigner@0.1.0",
+      "dependsOn": [
+        "pkg:github/bitcoindevkit/bdk-swift@3.0.0",
+        "pkg:github/BlockchainCommons/URKit@9.0.0",
+        "pkg:generic/apple-libz@platform-sdk"
+      ]
+    },
+    {
+      "ref": "pkg:github/BlockchainCommons/URKit@9.0.0",
+      "dependsOn": ["pkg:github/wolfmcnally/WolfBase@5.3.1"]
+    },
+    {
+      "ref": "pkg:github/wolfmcnally/WolfBase@5.3.1",
+      "dependsOn": [
+        "pkg:github/apple/swift-algorithms@1.2.1",
+        "pkg:github/apple/swift-numerics@1.1.1"
+      ]
+    }
+  ]
+}

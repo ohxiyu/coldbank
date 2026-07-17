@@ -211,8 +211,18 @@ private func makePolicyPSBT(
     profile: WalletProfile,
     inputFingerprint: Data = Data([0x73, 0xc5, 0xda, 0x0a]),
     includeNonWitnessUTXO: Bool = true,
+    includeGlobalXpub: Bool = false,
+    recipientSatoshis: UInt64 = 1_000,
+    feeSatoshis: UInt64 = 100,
+    sequence: UInt32 = 0xffff_fffd,
     lockTime: UInt32 = 0
 ) throws -> Data {
+    guard recipientSatoshis > 0,
+          feeSatoshis > 0,
+          recipientSatoshis <= 2_000 - feeSatoshis else {
+        throw TestFailure(description: "invalid policy PSBT amounts")
+    }
+    let changeSatoshis = 2_000 - recipientSatoshis - feeSatoshis
     let network: BitcoinDevKit.Network = profile.network == .bitcoin ? .bitcoin : .testnet
     let networkKind: NetworkKind = profile.network == .bitcoin ? .main : .test
     let coinType: UInt32 = profile.network == .bitcoin ? 0 : 1
@@ -271,18 +281,35 @@ private func makePolicyPSBT(
     transaction.append(contentsOf: previousTxIDBytes.reversed())
     appendUInt32LE(0, to: &transaction)
     transaction.append(0)
-    appendUInt32LE(0xffff_fffd, to: &transaction)
+    appendUInt32LE(sequence, to: &transaction)
     transaction.append(2)
-    appendUInt64LE(1_000, to: &transaction)
+    appendUInt64LE(recipientSatoshis, to: &transaction)
     transaction.append(UInt8(recipientScript.count))
     transaction.append(recipientScript)
-    appendUInt64LE(900, to: &transaction)
+    appendUInt64LE(changeSatoshis, to: &transaction)
     transaction.append(UInt8(changeScript.count))
     transaction.append(changeScript)
     appendUInt32LE(lockTime, to: &transaction)
 
     var psbt = Data([0x70, 0x73, 0x62, 0x74, 0xff])
     appendMapEntry(key: Data([0x00]), value: transaction, to: &psbt)
+    if includeGlobalXpub {
+        var globalXpubKey = Data([0x01])
+        globalXpubKey.append(
+            try decodeBase58Check(profile.accountExtendedPublicKey)
+        )
+        var globalXpubValue = inputFingerprint
+        [
+            UInt32(84) | 0x8000_0000,
+            coinType | 0x8000_0000,
+            UInt32(0) | 0x8000_0000,
+        ].forEach { appendUInt32LE($0, to: &globalXpubValue) }
+        appendMapEntry(
+            key: globalXpubKey,
+            value: globalXpubValue,
+            to: &psbt
+        )
+    }
     psbt.append(0)
 
     if includeNonWitnessUTXO {
@@ -568,6 +595,100 @@ private func runCoreTests() throws {
             try runner.expect(first.commitment == review.commitment, "review commitment changed")
             try runner.expectColdSignerError(.unsupportedPSBTField) {
                 _ = try StrictPSBTStructureParser.parse(first.signedPSBT)
+            }
+        }
+
+        try runner.run("PSBT signer preserves global xpub metadata") {
+            let setup = try deriver.restore(words: words, network: .bitcoin)
+            let psbt = try makePolicyPSBT(
+                profile: setup.profile,
+                includeGlobalXpub: true
+            )
+            let structure = try StrictPSBTStructureParser.parse(psbt)
+            try runner.expect(
+                structure.globalXpubCommitments.count == 1,
+                "global xpub metadata was not committed"
+            )
+            let review = try PSBTPolicyEngine().review(
+                psbt: psbt,
+                profile: setup.profile
+            )
+            let signed = try PSBTSigner().sign(
+                psbt: psbt,
+                reviewedAs: review,
+                using: setup
+            )
+            try runner.expect(
+                signed.signedInputCount == 1,
+                "global xpub PSBT was not signed"
+            )
+        }
+
+        try runner.run("50-round deterministic testnet signing soak") {
+            let setup = try deriver.restore(words: words, network: .testnet)
+            for iteration in 0..<50 {
+                let recipient = UInt64(650 + iteration * 17)
+                let fee = UInt64(50 + iteration)
+                let lockTime: UInt32 = iteration.isMultiple(of: 3)
+                    ? 0
+                    : UInt32(840_000 + iteration)
+                let sequence: UInt32 = iteration.isMultiple(of: 2)
+                    ? 0xffff_fffd
+                    : 0xffff_fffe
+                let psbt = try makePolicyPSBT(
+                    profile: setup.profile,
+                    recipientSatoshis: recipient,
+                    feeSatoshis: fee,
+                    sequence: sequence,
+                    lockTime: lockTime
+                )
+                let review = try PSBTPolicyEngine().review(
+                    psbt: psbt,
+                    profile: setup.profile
+                )
+                try runner.expect(
+                    review.outgoingSatoshis == recipient,
+                    "round \(iteration) outgoing amount drifted"
+                )
+                try runner.expect(
+                    review.feeSatoshis == fee,
+                    "round \(iteration) fee drifted"
+                )
+                try runner.expect(
+                    review.change.first?.valueSatoshis == 2_000 - recipient - fee,
+                    "round \(iteration) change drifted"
+                )
+                try runner.expect(
+                    review.warnings.contains(.replaceByFeeEnabled)
+                        == iteration.isMultiple(of: 2),
+                    "round \(iteration) RBF warning drifted"
+                )
+                try runner.expect(
+                    review.warnings.contains(.lockTimeEnabled) == (lockTime != 0),
+                    "round \(iteration) locktime warning drifted"
+                )
+
+                let first = try PSBTSigner().sign(
+                    psbt: psbt,
+                    reviewedAs: review,
+                    using: setup
+                )
+                let second = try PSBTSigner().sign(
+                    psbt: psbt,
+                    reviewedAs: review,
+                    using: setup
+                )
+                try runner.expect(first == second, "round \(iteration) was nondeterministic")
+                try runner.expect(first.commitment == review.commitment, "round \(iteration) commitment drifted")
+                let signed = try Psbt(psbtBase64: first.signedPSBT.base64EncodedString())
+                try runner.expect(
+                    signed.input()[0].partialSigs.count == 1,
+                    "round \(iteration) partial signature missing"
+                )
+                try runner.expect(
+                    signed.input()[0].finalScriptWitness == nil,
+                    "round \(iteration) unexpectedly finalized"
+                )
             }
         }
 

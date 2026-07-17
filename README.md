@@ -8,7 +8,7 @@ ColdSigner turns a spare iPhone into an open-source, air-gapped Bitcoin transact
 
 - Native Swift and SwiftUI app, iOS 16+
 - BIP39 key creation and recovery
-- BIP84 single-signature wallets (`wpkh`, mainnet first)
+- BIP84 single-signature wallets (`wpkh`; testnet default in the alpha, explicit-risk mainnet option)
 - PSBT v0 import and export over animated BC-UR or BBQr QR
 - Human-verifiable transaction review before signing
 - Sparrow end-to-end compatibility as the release gate
@@ -40,6 +40,9 @@ Start with:
 - [Compatibility matrix](docs/COMPATIBILITY.md)
 - [Development backlog](docs/DEVELOPMENT-PLAN.md)
 - [Implementation status](docs/IMPLEMENTATION-STATUS.md)
+- [Testnet alpha user guide](docs/USER-GUIDE.md)
+- [Release checklist](docs/RELEASE-CHECKLIST.md)
+- [CycloneDX SBOM](docs/SBOM-v0.1.json)
 - [GitHub repository setup](docs/GITHUB-SETUP.md)
 
 ## Local setup
@@ -57,7 +60,14 @@ Run repository checks with:
 ```bash
 make check
 make core-test
+make core-sanitizer
+make release-audit
 ```
+
+`release-audit` validates dependency pins, JSON release metadata, required notices,
+the SBOM, and production app-icon properties. CI additionally inspects the built
+app's linked frameworks, undefined symbols, Info.plist, extensions, and
+entitlements for unexpected networking/cloud capabilities.
 
 ## Architecture decision for v0.1
 

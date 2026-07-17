@@ -2,6 +2,10 @@
 
 ColdSigner pins direct dependencies exactly. A version change requires an ADR, license review, golden-vector run, and interoperability regression.
 
+The release inventory is published as a CycloneDX 1.5 document in
+[`SBOM-v0.1.json`](SBOM-v0.1.json); attribution and redistribution notes are in
+[`../THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md).
+
 | Dependency | Pinned version | Purpose | Upstream | License | Security note |
 |---|---:|---|---|---|---|
 | bdk-swift | 3.0.0 | BIP39/BIP32, descriptors, PSBT, signing | `bitcoindevkit/bdk-swift` | MIT / Apache-2.0 upstream components | Rust-backed binary XCFramework; checksum is verified by SwiftPM |

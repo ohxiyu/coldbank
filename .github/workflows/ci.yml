@@ -18,6 +18,18 @@ jobs:
       - name: Validate repository policy
         run: make check
 
+  release-audit:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Re-resolve committed dependency graphs
+        run: |
+          swift package resolve
+          swift package --package-path Packages/ColdSignerTransport resolve
+          git diff --exit-code -- Package.resolved Packages/ColdSignerTransport/Package.resolved
+      - name: Validate pinned release metadata
+        run: make release-audit
+
   core-tests:
     runs-on: macos-15
     steps:
@@ -27,11 +39,27 @@ jobs:
       - name: Test ColdSignerCore
         run: make core-test
 
+  core-address-sanitizer:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run deterministic core corpus with AddressSanitizer
+        run: |
+          set -o pipefail
+          make core-sanitizer 2>&1 | tee core-address-sanitizer.log
+      - name: Upload sanitizer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-address-sanitizer-${{ github.sha }}
+          path: core-address-sanitizer.log
+          if-no-files-found: error
+
   transport-tests:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Test bounded BC-UR transport
+      - name: Test bounded optical transport
         run: >-
           swift test
           --package-path Packages/ColdSignerTransport
@@ -51,11 +79,17 @@ jobs:
           -project ColdSigner.xcodeproj
           -scheme ColdSigner
           -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath /tmp/coldsigner-derived-data
           CODE_SIGNING_ALLOWED=NO
+      - name: Audit built app for network capabilities
+        run: >-
+          ./scripts/audit_built_app.sh
+          /tmp/coldsigner-derived-data/Build/Products/Debug-iphonesimulator/ColdSigner.app
       - name: Run unit tests
         run: >-
           xcodebuild test
           -project ColdSigner.xcodeproj
           -scheme ColdSigner
           -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'
+          -derivedDataPath /tmp/coldsigner-derived-data
           CODE_SIGNING_ALLOWED=NO
