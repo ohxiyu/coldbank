@@ -1,5 +1,6 @@
 import ColdSignerCore
 import Foundation
+import LocalAuthentication
 import Security
 
 struct KeychainWrappingKeyStore {
@@ -36,10 +37,13 @@ struct KeychainWrappingKeyStore {
     }
 
     func read(localizedReason: String) throws -> Data {
+        let authenticationContext = LAContext()
+        authenticationContext.localizedReason = localizedReason
+
         var query = baseQuery
         query[kSecReturnData] = true
         query[kSecMatchLimit] = kSecMatchLimitOne
-        query[kSecUseOperationPrompt] = localizedReason
+        query[kSecUseAuthenticationContext] = authenticationContext
 
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
