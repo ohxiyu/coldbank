@@ -1,0 +1,51 @@
+{
+  "originHash" : "29199fa752775be1068eaa701ab46d80e6a881a976102b4d581039c387dc462e",
+  "pins" : [
+    {
+      "identity" : "bdk-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/bitcoindevkit/bdk-swift",
+      "state" : {
+        "revision" : "5bc9c3cddf203f6aa147d77364782bf095e4f84e",
+        "version" : "3.0.0"
+      }
+    },
+    {
+      "identity" : "swift-algorithms",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-algorithms.git",
+      "state" : {
+        "revision" : "87e50f483c54e6efd60e885f7f5aa946cee68023",
+        "version" : "1.2.1"
+      }
+    },
+    {
+      "identity" : "swift-numerics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-numerics.git",
+      "state" : {
+        "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
+        "version" : "1.1.1"
+      }
+    },
+    {
+      "identity" : "urkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/BlockchainCommons/URKit",
+      "state" : {
+        "revision" : "4323721f7f91331d8cfa64ee54cfbaba106a5b20",
+        "version" : "9.0.0"
+      }
+    },
+    {
+      "identity" : "wolfbase",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/wolfmcnally/WolfBase",
+      "state" : {
+        "revision" : "d7219c703316956c42a7f47f926a442d082f043f",
+        "version" : "5.3.1"
+      }
+    }
+  ],
+  "version" : 3
+}
