@@ -1,0 +1,38 @@
+name: Feature request
+description: Propose a scoped product or compatibility change
+title: "[Feature]: "
+labels: [enhancement, triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Describe the job or failure, not only the desired implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed outcome
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Product or UI
+        - Key lifecycle
+        - Bitcoin or PSBT
+        - QR transport
+        - Wallet compatibility
+        - Build or release
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security and compatibility impact
+      description: What new input, secret path, signing behavior, or wallet format is introduced?
+    validations:
+      required: true

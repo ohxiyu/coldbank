@@ -1,0 +1,15 @@
+name: Security contact request
+description: Ask maintainers for a private reporting channel without publishing details
+title: "Security contact request"
+labels: [security, triage]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include technical details, affected transactions, addresses, keys, PSBTs, screenshots, or exploit steps here.
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have not included vulnerability details and need a private reporting channel.
+          required: true
