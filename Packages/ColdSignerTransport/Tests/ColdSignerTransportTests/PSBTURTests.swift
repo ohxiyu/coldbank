@@ -18,6 +18,22 @@ final class PSBTURTests: XCTestCase {
         }
     }
 
+    func testCanonicalCBORByteStringVectors() throws {
+        let ur = try PSBTURCodec.encode(smallPSBT)
+        XCTAssertEqual(ur.type, "crypto-psbt")
+        XCTAssertEqual(
+            ur.cbor,
+            Data([0x46, 0x70, 0x73, 0x62, 0x74, 0xff, 0x00])
+        )
+
+        for payloadLength in [23, 24, 255, 256, 65_535, 65_536] {
+            var psbt = Data([0x70, 0x73, 0x62, 0x74, 0xff])
+            psbt.append(Data(repeating: 0x5a, count: payloadLength - psbt.count))
+            let encoded = try PSBTURCodec.encode(psbt)
+            XCTAssertEqual(try PSBTURCodec.decode(encoded), psbt)
+        }
+    }
+
     func testMultipartRoundTripAcceptsReorderingAndDuplicates() throws {
         var psbt = Data([0x70, 0x73, 0x62, 0x74, 0xff])
         psbt.append(contentsOf: (0..<4_096).map { UInt8($0 % 251) })
@@ -32,6 +48,27 @@ final class PSBTURTests: XCTestCase {
         let decoder = PSBTURDecoder()
         var decoded: Data?
         for frame in ([frames.last!] + Array(frames.reversed()) + [frames.first!]) {
+            let progress = try decoder.receive(frame)
+            if progress.isComplete {
+                decoded = progress.psbt
+                break
+            }
+        }
+        XCTAssertEqual(decoded, psbt)
+    }
+
+    func testFountainRedundancyRecoversDroppedOriginalFrames() throws {
+        var psbt = Data([0x70, 0x73, 0x62, 0x74, 0xff])
+        psbt.append(contentsOf: (0..<2_048).map { UInt8($0 % 239) })
+        let encoder = try PSBTUREncoder(psbt: psbt, maximumFragmentLength: 80)
+        let decoder = PSBTURDecoder()
+        var decoded: Data?
+
+        for index in 0..<(encoder.fragmentCount * 4) {
+            let frame = encoder.nextPart()
+            if index < encoder.fragmentCount, index.isMultiple(of: 4) {
+                continue
+            }
             let progress = try decoder.receive(frame)
             if progress.isComplete {
                 decoded = progress.psbt
