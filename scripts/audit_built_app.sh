@@ -6,6 +6,13 @@ if [[ $# -ne 1 ]]; then
   exit 2
 fi
 
+for command_name in rg otool nm codesign; do
+  command -v "$command_name" >/dev/null || {
+    echo "error: required built-app audit tool is missing: $command_name"
+    exit 1
+  }
+done
+
 app_bundle="$1"
 binary="$app_bundle/ColdSigner"
 info_plist="$app_bundle/Info.plist"

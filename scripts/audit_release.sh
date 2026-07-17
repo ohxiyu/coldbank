@@ -4,6 +4,13 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+for command_name in rg python3 sips shasum; do
+  command -v "$command_name" >/dev/null || {
+    echo "error: required release audit tool is missing: $command_name"
+    exit 1
+  }
+done
+
 ./scripts/check_repo.sh
 git diff --check
 

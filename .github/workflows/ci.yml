@@ -22,6 +22,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - name: Install release audit tools
+        run: brew install ripgrep
       - name: Re-resolve committed dependency graphs
         run: |
           swift package resolve
@@ -40,7 +42,9 @@ jobs:
         run: make core-test
 
   core-address-sanitizer:
-    runs-on: macos-15
+    # The linked ASan process is killed on the 7 GB arm64 runner. The standard
+    # Intel runner provides 14 GB for this evidence job.
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - name: Run deterministic core corpus with AddressSanitizer
@@ -69,8 +73,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install build and audit tools
+        run: brew install xcodegen ripgrep
       - name: Generate project
         run: make generate
       - name: Build for simulator
