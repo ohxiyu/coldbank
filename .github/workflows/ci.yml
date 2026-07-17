@@ -27,6 +27,16 @@ jobs:
       - name: Test ColdSignerCore
         run: make core-test
 
+  transport-tests:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test bounded BC-UR transport
+        run: >-
+          swift test
+          --package-path Packages/ColdSignerTransport
+          --scratch-path /tmp/coldsigner-transport-build
+
   ios-build:
     runs-on: macos-15
     steps:

@@ -23,5 +23,12 @@ let package = Package(
                 .product(name: "URKit", package: "URKit"),
             ]
         ),
+        .testTarget(
+            name: "ColdSignerTransportTests",
+            dependencies: [
+                "ColdSignerTransport",
+                .product(name: "URKit", package: "URKit"),
+            ]
+        ),
     ]
 )
