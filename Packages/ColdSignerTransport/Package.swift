@@ -12,7 +12,7 @@ let package = Package(
         .library(name: "ColdSignerTransport", targets: ["ColdSignerTransport"]),
     ],
     dependencies: [
-        .package(path: "../.."),
+        .package(name: "ColdSignerCorePackage", path: "../.."),
         .package(url: "https://github.com/BlockchainCommons/URKit", exact: "9.0.0"),
     ],
     targets: [
