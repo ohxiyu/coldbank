@@ -12,7 +12,7 @@ jobs:
   repository-checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install ripgrep
         run: sudo apt-get update && sudo apt-get install --yes ripgrep
       - name: Validate repository policy
@@ -21,7 +21,7 @@ jobs:
   release-audit:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install release audit tools
         run: brew install ripgrep
       - name: Re-resolve committed dependency graphs
@@ -35,7 +35,7 @@ jobs:
   core-tests:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Resolve pinned dependencies
         run: swift package resolve
       - name: Test ColdSignerCore
@@ -44,23 +44,21 @@ jobs:
   psbt-address-sanitizer:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - name: Install audit tool
-        run: brew install ripgrep
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install pinned Swift.org toolchain
         run: |
           curl --fail --location \
             --output "$RUNNER_TEMP/swift-6.3.3-RELEASE-osx.pkg" \
             https://download.swift.org/swift-6.3.3-release/xcode/swift-6.3.3-RELEASE/swift-6.3.3-RELEASE-osx.pkg
           pkgutil --check-signature "$RUNNER_TEMP/swift-6.3.3-RELEASE-osx.pkg" \
-            | rg 'Developer ID Installer: Swift Open Source \(V9AUD2URP3\)'
+            | grep -E 'Developer ID Installer: Swift Open Source \(V9AUD2URP3\)'
           installer \
             -pkg "$RUNNER_TEMP/swift-6.3.3-RELEASE-osx.pkg" \
             -target CurrentUserHomeDirectory
           toolchain_bin="$HOME/Library/Developer/Toolchains/swift-6.3.3-RELEASE.xctoolchain/usr/bin"
           test -x "$toolchain_bin/swift"
           export PATH="$toolchain_bin:$PATH"
-          swift --version | rg 'Swift version 6\.3\.3'
+          swift --version | grep -E 'Swift version 6\.3\.3'
           echo "$toolchain_bin" >> "$GITHUB_PATH"
       - name: Run hostile PSBT corpus with AddressSanitizer
         run: |
@@ -68,7 +66,7 @@ jobs:
           make psbt-sanitizer 2>&1 | tee psbt-address-sanitizer.log
       - name: Upload sanitizer evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: psbt-address-sanitizer-${{ github.sha }}
           path: psbt-address-sanitizer.log
@@ -77,23 +75,21 @@ jobs:
   psbt-libfuzzer:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - name: Install audit tool
-        run: brew install ripgrep
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install pinned Swift.org toolchain
         run: |
           curl --fail --location \
             --output "$RUNNER_TEMP/swift-6.3.3-RELEASE-osx.pkg" \
             https://download.swift.org/swift-6.3.3-release/xcode/swift-6.3.3-RELEASE/swift-6.3.3-RELEASE-osx.pkg
           pkgutil --check-signature "$RUNNER_TEMP/swift-6.3.3-RELEASE-osx.pkg" \
-            | rg 'Developer ID Installer: Swift Open Source \(V9AUD2URP3\)'
+            | grep -E 'Developer ID Installer: Swift Open Source \(V9AUD2URP3\)'
           installer \
             -pkg "$RUNNER_TEMP/swift-6.3.3-RELEASE-osx.pkg" \
             -target CurrentUserHomeDirectory
           toolchain_bin="$HOME/Library/Developer/Toolchains/swift-6.3.3-RELEASE.xctoolchain/usr/bin"
           test -x "$toolchain_bin/swift"
           export PATH="$toolchain_bin:$PATH"
-          swift --version | rg 'Swift version 6\.3\.3'
+          swift --version | grep -E 'Swift version 6\.3\.3'
           echo "$toolchain_bin" >> "$GITHUB_PATH"
       - name: Run coverage-guided PSBT fuzzing
         env:
@@ -104,7 +100,7 @@ jobs:
           make psbt-fuzz 2>&1 | tee psbt-libfuzzer.log
       - name: Upload fuzzer evidence and reproducer artifacts
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: psbt-libfuzzer-${{ github.sha }}
           path: |
@@ -115,7 +111,7 @@ jobs:
   transport-tests:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Test bounded optical transport
         run: >-
           swift test
@@ -125,7 +121,7 @@ jobs:
   ios-build:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install build and audit tools
         run: brew install xcodegen ripgrep
       - name: Generate project
