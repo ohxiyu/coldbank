@@ -45,6 +45,23 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install audit tool
+        run: brew install ripgrep
+      - name: Install pinned Swift.org toolchain
+        run: |
+          curl --fail --location \
+            --output "$RUNNER_TEMP/swift-6.3.3-RELEASE-osx.pkg" \
+            https://download.swift.org/swift-6.3.3-release/xcode/swift-6.3.3-RELEASE/swift-6.3.3-RELEASE-osx.pkg
+          pkgutil --check-signature "$RUNNER_TEMP/swift-6.3.3-RELEASE-osx.pkg" \
+            | rg 'Developer ID Installer: Swift Open Source \(V9AUD2URP3\)'
+          installer \
+            -pkg "$RUNNER_TEMP/swift-6.3.3-RELEASE-osx.pkg" \
+            -target CurrentUserHomeDirectory
+          toolchain_bin="$HOME/Library/Developer/Toolchains/swift-6.3.3-RELEASE.xctoolchain/usr/bin"
+          test -x "$toolchain_bin/swift"
+          export PATH="$toolchain_bin:$PATH"
+          swift --version | rg 'Swift version 6\.3\.3'
+          echo "$toolchain_bin" >> "$GITHUB_PATH"
       - name: Run hostile PSBT corpus with AddressSanitizer
         run: |
           set -o pipefail
