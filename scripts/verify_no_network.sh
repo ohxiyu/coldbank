@@ -2,9 +2,14 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+command -v rg >/dev/null || {
+  echo "error: ripgrep (rg) is required for the network guard"
+  exit 1
+}
 source_roots=(
   "$repo_root/ColdSignerApp"
   "$repo_root/Sources"
+  "$repo_root/Packages/ColdSignerTransport/Sources"
 )
 
 banned_pattern='(^|[^A-Za-z])(import[[:space:]]+(Network|NetworkExtension|WebKit|CloudKit|MultipeerConnectivity)|URLSession|URLRequest|WKWebView|NWConnection|CFSocket|GCDAsyncSocket|MCSession|CKContainer)'

@@ -1,4 +1,4 @@
-.PHONY: bootstrap generate check core-test test
+.PHONY: bootstrap generate check core-test psbt-sanitizer psbt-fuzz release-audit test
 
 bootstrap: generate check
 
@@ -11,6 +11,15 @@ check:
 
 core-test:
 	./scripts/run_core_tests.sh
+
+psbt-sanitizer:
+	./scripts/run_psbt_sanitizer.sh
+
+psbt-fuzz:
+	./scripts/run_psbt_fuzzer.sh
+
+release-audit:
+	./scripts/audit_release.sh
 
 test: generate
 	xcodebuild test \

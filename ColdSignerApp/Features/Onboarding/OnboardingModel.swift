@@ -16,6 +16,7 @@ final class OnboardingModel: ObservableObject {
     }
 
     @Published var step: Step = .welcome
+    @Published var selectedNetwork: WalletProfile.Network = .testnet
     @Published private(set) var pendingSetup: WalletSetup?
     @Published private(set) var backupChallenge: BackupChallenge?
     @Published var errorMessage: String?
@@ -31,6 +32,10 @@ final class OnboardingModel: ObservableObject {
     }
 
     func continueFromReadiness() {
+        guard !isWorking else {
+            errorMessage = "正在完成上一项安全操作，请稍候。"
+            return
+        }
         do {
             try authenticator.requireAvailability()
             errorMessage = nil
@@ -44,7 +49,10 @@ final class OnboardingModel: ObservableObject {
 
     func createWallet(wordCount: Int) {
         do {
-            pendingSetup = try deriver.generate(wordCount: wordCount, network: .bitcoin)
+            pendingSetup = try deriver.generate(
+                wordCount: wordCount,
+                network: selectedNetwork
+            )
             backupChallenge = nil
             errorMessage = nil
             step = .seedDisplay
@@ -84,7 +92,10 @@ final class OnboardingModel: ObservableObject {
 
     func restoreWallet(words: [String]) {
         do {
-            pendingSetup = try deriver.restore(words: words, network: .bitcoin)
+            pendingSetup = try deriver.restore(
+                words: words,
+                network: selectedNetwork
+            )
             backupChallenge = nil
             errorMessage = nil
             step = .walletConfirmation
@@ -119,5 +130,12 @@ final class OnboardingModel: ObservableObject {
         backupChallenge = nil
         errorMessage = nil
         step = .setupChoice
+    }
+
+    func protectForBackground() {
+        pendingSetup = nil
+        backupChallenge = nil
+        errorMessage = nil
+        step = .welcome
     }
 }

@@ -22,7 +22,7 @@ struct AppRootView: View {
         )
         .task {
             await model.load()
-            showsPrivacyCover = false
+            showsPrivacyCover = scenePhase != .active
         }
         .onChange(of: scenePhase) { newPhase in
             switch newPhase {
@@ -45,7 +45,10 @@ struct AppRootView: View {
             ProgressView("正在检查本地签名器…")
         case .needsOnboarding:
             OnboardingFlow(vault: model.vault) { profile in
-                model.didActivate(profile: profile)
+                model.didActivate(
+                    profile: profile,
+                    unlocked: scenePhase == .active
+                )
             }
         case .locked(let profile):
             UnlockView(profile: profile) {

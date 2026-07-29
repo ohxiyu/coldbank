@@ -8,7 +8,7 @@ ColdSigner turns a spare iPhone into an open-source, air-gapped Bitcoin transact
 
 - Native Swift and SwiftUI app, iOS 16+
 - BIP39 key creation and recovery
-- BIP84 single-signature wallets (`wpkh`, mainnet first)
+- BIP84 single-signature wallets (`wpkh`; testnet default in the alpha, explicit-risk mainnet option)
 - PSBT v0 import and export over animated BC-UR or BBQr QR
 - Human-verifiable transaction review before signing
 - Sparrow end-to-end compatibility as the release gate
@@ -21,7 +21,9 @@ ColdSigner is a software signer running on a general-purpose phone. It is not eq
 
 ```text
 ColdSignerApp/            SwiftUI application and iOS security adapters
-Sources/ColdSignerCore/   security and Bitcoin core package
+Sources/ColdSignerDomain/ stable errors and resource-policy limits
+Sources/ColdSignerPSBT/   dependency-light hostile-input parser
+Sources/ColdSignerCore/   security, BDK adapter, policy, and signing package
 Tests/                    cross-platform core tests
 ColdSignerAppTests/       iOS application tests
 Fixtures/Public/          deterministic public interoperability vectors
@@ -40,6 +42,9 @@ Start with:
 - [Compatibility matrix](docs/COMPATIBILITY.md)
 - [Development backlog](docs/DEVELOPMENT-PLAN.md)
 - [Implementation status](docs/IMPLEMENTATION-STATUS.md)
+- [Testnet alpha user guide](docs/USER-GUIDE.md)
+- [Release checklist](docs/RELEASE-CHECKLIST.md)
+- [CycloneDX SBOM](docs/SBOM-v0.1.json)
 - [GitHub repository setup](docs/GITHUB-SETUP.md)
 
 ## Local setup
@@ -57,11 +62,21 @@ Run repository checks with:
 ```bash
 make check
 make core-test
+make psbt-sanitizer
+make release-audit
 ```
+
+The coverage-guided harness is documented in [PSBT adversarial testing](docs/FUZZING.md).
+It uses a pinned Swift.org compiler in CI and is not part of the shipped app.
+
+`release-audit` validates dependency pins, JSON release metadata, required notices,
+the SBOM, and production app-icon properties. CI additionally inspects the built
+app's linked frameworks, undefined symbols, Info.plist, extensions, and
+entitlements for unexpected networking/cloud capabilities.
 
 ## Architecture decision for v0.1
 
-The initial implementation uses `bdk-swift` for descriptors, PSBT parsing, and signing, `URKit` for UR fountain transport, and the platform zlib for bounded BBQr decompression. `libwally-core` remains a documented fallback, not a second active signing stack. Keeping one signing implementation reduces audit surface and avoids divergent transaction interpretation.
+The initial implementation uses a first-party strict parser for the allowed PSBT v0 subset, `bdk-swift` for descriptors and signing after policy review, `URKit` for UR fountain transport, and the platform zlib for bounded BBQr decompression. `libwally-core` remains a documented fallback, not a second active signing stack. Keeping one signing implementation reduces audit surface and avoids divergent transaction interpretation.
 
 Dependencies are pinned in the root and transport `Package.swift` manifests; changes require an ADR and compatibility regression run.
 

@@ -1,4 +1,5 @@
 import Foundation
+import ColdSignerPSBT
 
 public struct BackupChallenge: Equatable, Sendable {
     public let positions: [Int]

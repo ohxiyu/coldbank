@@ -3,6 +3,7 @@ import SwiftUI
 
 struct OnboardingFlow: View {
     @StateObject private var model: OnboardingModel
+    @Environment(\.scenePhase) private var scenePhase
     let onComplete: (WalletProfile) -> Void
 
     init(vault: any WalletVault, onComplete: @escaping (WalletProfile) -> Void) {
@@ -24,6 +25,7 @@ struct OnboardingFlow: View {
                     )
                 case .setupChoice:
                     SetupChoiceView(
+                        network: $model.selectedNetwork,
                         create: { model.step = .createOptions },
                         restore: { model.step = .restoreOptions }
                     )
@@ -76,6 +78,10 @@ struct OnboardingFlow: View {
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: model.step)
+        }
+        .onChange(of: scenePhase) { phase in
+            guard phase != .active else { return }
+            model.protectForBackground()
         }
     }
 }

@@ -77,7 +77,7 @@ A self-custody Bitcoin user who already understands seed backups and uses Sparro
 #### Wallet profile
 
 - Bitcoin BIP84 native SegWit single signature only: `m/84'/coin_type'/0'`.
-- Mainnet production profile; testnet/signet exposed only in Developer Mode before beta.
+- Testnet is the pre-alpha/alpha default; mainnet requires an explicit unaudited-risk warning. Signet remains a Developer Mode candidate before beta.
 - Display wallet name, master fingerprint, network, script type, and account path.
 - Export public descriptor with origin information and checksum.
 - Export account extended public key as text/static QR for coordinators that require it.

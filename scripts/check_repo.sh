@@ -2,6 +2,10 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+command -v rg >/dev/null || {
+  echo "error: ripgrep (rg) is required for repository checks"
+  exit 1
+}
 
 required_files=(
   README.md

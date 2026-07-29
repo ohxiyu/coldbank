@@ -1,4 +1,5 @@
 import CryptoKit
+import ColdSignerDomain
 import Foundation
 
 public struct PSBTDerivationClaim: Equatable, Sendable {
@@ -33,6 +34,7 @@ public struct PSBTOutputMapStructure: Equatable, Sendable {
 
 public struct StrictPSBTStructure: Equatable, Sendable {
     public let psbtVersion: UInt32
+    public let globalXpubCommitments: [Data]
     public let unsignedTransaction: Data
     public let transactionVersion: Int32
     public let lockTime: UInt32
@@ -56,7 +58,7 @@ public enum StrictPSBTStructureParser {
         try parse(psbt, limits: limits, allowPartialSignatures: false)
     }
 
-    static func parseSignedResult(
+    public static func parseSignedResult(
         _ psbt: Data,
         limits: TransactionPolicyLimits = .v0_1
     ) throws -> StrictPSBTStructure {
@@ -79,6 +81,7 @@ public enum StrictPSBTStructureParser {
         let globalMap = try readMap(from: &cursor)
         var unsignedTransaction: Data?
         var psbtVersion: UInt32 = 0
+        var globalXpubCommitments: [Data] = []
 
         for entry in globalMap {
             guard let type = entry.key.first else {
@@ -92,6 +95,11 @@ public enum StrictPSBTStructureParser {
                 unsignedTransaction = entry.value
             case 0x01:
                 try validateGlobalXpub(entry, limits: limits)
+                var committedEntry = entry.key
+                committedEntry.append(entry.value)
+                globalXpubCommitments.append(
+                    Data(SHA256.hash(data: committedEntry))
+                )
             case 0xfb:
                 guard entry.key.count == 1, entry.value.count == 4 else {
                     throw ColdSignerError.invalidPSBT
@@ -136,6 +144,9 @@ public enum StrictPSBTStructureParser {
 
         return StrictPSBTStructure(
             psbtVersion: psbtVersion,
+            globalXpubCommitments: globalXpubCommitments.sorted {
+                $0.lexicographicallyPrecedes($1)
+            },
             unsignedTransaction: unsignedTransaction,
             transactionVersion: transaction.version,
             lockTime: transaction.lockTime,
