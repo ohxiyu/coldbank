@@ -22,6 +22,19 @@ The release inventory is published as a CycloneDX 1.5 document in
 
 ## Architectural boundary
 
-`BitcoinDevKit` owns cryptographic primitives and Bitcoin serialization. `URKit` owns generic UR fragmentation. The platform zlib performs only bounded raw-DEFLATE expansion for BBQr. ColdSigner owns optical framing, transaction policy, size/complexity limits, error handling, user-visible review semantics, and compatibility claims.
+`BitcoinDevKit` owns cryptographic primitives and signing after review. The
+dependency-light `ColdSignerPSBT` target owns strict parsing and normalization
+of the supported PSBT v0 subset; it depends only on the platform Foundation and
+CryptoKit modules plus `ColdSignerDomain`. `URKit` owns generic UR fragmentation.
+The platform zlib performs only bounded raw-DEFLATE expansion for BBQr.
+ColdSigner owns optical framing, transaction policy, size/complexity limits,
+error handling, user-visible review semantics, and compatibility claims.
 
-Separate packages expose `ColdSignerCore` and `ColdSignerTransport`. This keeps Bitcoin/key-policy tests independent of camera/UR integration and isolates upstream toolchain compatibility failures. URKit 9.0.0 is known not to compile under the pre-release Swift 6.4/macOS 27 SDK because Foundation changed `Data.bytes`; supported Xcode CI remains the release authority until an upstream or reviewed local compatibility patch is adopted.
+Separate targets isolate domain limits, hostile PSBT parsing, BDK-backed signing,
+and optical transport. This lets sanitizer/libFuzzer exercise the untrusted-input
+boundary without loading the BDK binary XCFramework. The Swift.org 6.3.3
+toolchain used by the CI fuzz job is a test-only tool and does not build the iOS
+artifact. URKit 9.0.0 is known not to compile under the pre-release Swift
+6.4/macOS 27 SDK because Foundation changed `Data.bytes`; supported Xcode CI
+remains the release authority until an upstream or reviewed local compatibility
+patch is adopted.

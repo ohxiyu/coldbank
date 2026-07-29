@@ -1,4 +1,5 @@
 import BitcoinDevKit
+import ColdSignerPSBT
 import Foundation
 
 public protocol WalletDeriving: Sendable {

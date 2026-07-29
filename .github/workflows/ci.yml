@@ -12,7 +12,7 @@ jobs:
   repository-checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Install ripgrep
         run: sudo apt-get update && sudo apt-get install --yes ripgrep
       - name: Validate repository policy
@@ -21,7 +21,7 @@ jobs:
   release-audit:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Install release audit tools
         run: brew install ripgrep
       - name: Re-resolve committed dependency graphs
@@ -35,34 +35,70 @@ jobs:
   core-tests:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Resolve pinned dependencies
         run: swift package resolve
       - name: Test ColdSignerCore
         run: make core-test
 
-  core-address-sanitizer:
-    # The linked ASan process is killed on the 7 GB arm64 runner. The standard
-    # Intel runner provides 14 GB for this evidence job.
-    runs-on: macos-15-intel
+  psbt-address-sanitizer:
+    runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
-      - name: Run deterministic core corpus with AddressSanitizer
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run hostile PSBT corpus with AddressSanitizer
         run: |
           set -o pipefail
-          make core-sanitizer 2>&1 | tee core-address-sanitizer.log
+          make psbt-sanitizer 2>&1 | tee psbt-address-sanitizer.log
       - name: Upload sanitizer evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: core-address-sanitizer-${{ github.sha }}
-          path: core-address-sanitizer.log
+          name: psbt-address-sanitizer-${{ github.sha }}
+          path: psbt-address-sanitizer.log
+          if-no-files-found: error
+
+  psbt-libfuzzer:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install audit tool
+        run: brew install ripgrep
+      - name: Install pinned Swift.org toolchain
+        run: |
+          curl --fail --location \
+            --output "$RUNNER_TEMP/swift-6.3.3-RELEASE-osx.pkg" \
+            https://download.swift.org/swift-6.3.3-release/xcode/swift-6.3.3-RELEASE/swift-6.3.3-RELEASE-osx.pkg
+          pkgutil --check-signature "$RUNNER_TEMP/swift-6.3.3-RELEASE-osx.pkg" \
+            | rg 'Developer ID Installer: Swift Open Source \(V9AUD2URP3\)'
+          installer \
+            -pkg "$RUNNER_TEMP/swift-6.3.3-RELEASE-osx.pkg" \
+            -target CurrentUserHomeDirectory
+          toolchain_bin="$HOME/Library/Developer/Toolchains/swift-6.3.3-RELEASE.xctoolchain/usr/bin"
+          test -x "$toolchain_bin/swift"
+          export PATH="$toolchain_bin:$PATH"
+          swift --version | rg 'Swift version 6\.3\.3'
+          echo "$toolchain_bin" >> "$GITHUB_PATH"
+      - name: Run coverage-guided PSBT fuzzing
+        env:
+          PSBT_FUZZ_WORK_ROOT: ${{ runner.temp }}/coldsigner-psbt-fuzz
+          PSBT_FUZZ_RUNS: 25000
+        run: |
+          set -o pipefail
+          make psbt-fuzz 2>&1 | tee psbt-libfuzzer.log
+      - name: Upload fuzzer evidence and reproducer artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psbt-libfuzzer-${{ github.sha }}
+          path: |
+            psbt-libfuzzer.log
+            ${{ runner.temp }}/coldsigner-psbt-fuzz
           if-no-files-found: error
 
   transport-tests:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Test bounded optical transport
         run: >-
           swift test
@@ -72,7 +108,7 @@ jobs:
   ios-build:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Install build and audit tools
         run: brew install xcodegen ripgrep
       - name: Generate project

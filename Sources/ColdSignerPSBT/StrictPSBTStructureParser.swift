@@ -1,4 +1,5 @@
 import CryptoKit
+import ColdSignerDomain
 import Foundation
 
 public struct PSBTDerivationClaim: Equatable, Sendable {
@@ -57,7 +58,7 @@ public enum StrictPSBTStructureParser {
         try parse(psbt, limits: limits, allowPartialSignatures: false)
     }
 
-    static func parseSignedResult(
+    public static func parseSignedResult(
         _ psbt: Data,
         limits: TransactionPolicyLimits = .v0_1
     ) throws -> StrictPSBTStructure {

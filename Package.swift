@@ -16,8 +16,17 @@ let package = Package(
     ],
     targets: [
         .target(
+            name: "ColdSignerDomain"
+        ),
+        .target(
+            name: "ColdSignerPSBT",
+            dependencies: ["ColdSignerDomain"]
+        ),
+        .target(
             name: "ColdSignerCore",
             dependencies: [
+                "ColdSignerDomain",
+                "ColdSignerPSBT",
                 .product(name: "BitcoinDevKit", package: "bdk-swift"),
             ]
         ),
@@ -28,6 +37,16 @@ let package = Package(
                 .product(name: "BitcoinDevKit", package: "bdk-swift"),
             ],
             path: "Tests/ColdSignerCoreTestRunner"
+        ),
+        .executableTarget(
+            name: "ColdSignerPSBTFuzzer",
+            dependencies: ["ColdSignerPSBT"],
+            path: "Tests/ColdSignerPSBTFuzzer"
+        ),
+        .executableTarget(
+            name: "ColdSignerPSBTSanitizerRunner",
+            dependencies: ["ColdSignerPSBT"],
+            path: "Tests/ColdSignerPSBTSanitizerRunner"
         ),
     ]
 )

@@ -1,5 +1,6 @@
 import Foundation
 
+
 public enum ColdSignerError: Error, Equatable, Sendable {
     case invalidMnemonic
     case unsupportedWordCount(Int)

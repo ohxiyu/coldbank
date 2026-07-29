@@ -21,7 +21,9 @@ ColdSigner is a software signer running on a general-purpose phone. It is not eq
 
 ```text
 ColdSignerApp/            SwiftUI application and iOS security adapters
-Sources/ColdSignerCore/   security and Bitcoin core package
+Sources/ColdSignerDomain/ stable errors and resource-policy limits
+Sources/ColdSignerPSBT/   dependency-light hostile-input parser
+Sources/ColdSignerCore/   security, BDK adapter, policy, and signing package
 Tests/                    cross-platform core tests
 ColdSignerAppTests/       iOS application tests
 Fixtures/Public/          deterministic public interoperability vectors
@@ -60,9 +62,12 @@ Run repository checks with:
 ```bash
 make check
 make core-test
-make core-sanitizer
+make psbt-sanitizer
 make release-audit
 ```
+
+The coverage-guided harness is documented in [PSBT adversarial testing](docs/FUZZING.md).
+It uses a pinned Swift.org compiler in CI and is not part of the shipped app.
 
 `release-audit` validates dependency pins, JSON release metadata, required notices,
 the SBOM, and production app-icon properties. CI additionally inspects the built
@@ -71,7 +76,7 @@ entitlements for unexpected networking/cloud capabilities.
 
 ## Architecture decision for v0.1
 
-The initial implementation uses `bdk-swift` for descriptors, PSBT parsing, and signing, `URKit` for UR fountain transport, and the platform zlib for bounded BBQr decompression. `libwally-core` remains a documented fallback, not a second active signing stack. Keeping one signing implementation reduces audit surface and avoids divergent transaction interpretation.
+The initial implementation uses a first-party strict parser for the allowed PSBT v0 subset, `bdk-swift` for descriptors and signing after policy review, `URKit` for UR fountain transport, and the platform zlib for bounded BBQr decompression. `libwally-core` remains a documented fallback, not a second active signing stack. Keeping one signing implementation reduces audit surface and avoids divergent transaction interpretation.
 
 Dependencies are pinned in the root and transport `Package.swift` manifests; changes require an ADR and compatibility regression run.
 

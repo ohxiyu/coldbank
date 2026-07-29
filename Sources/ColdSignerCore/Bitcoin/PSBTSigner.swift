@@ -1,4 +1,5 @@
 import BitcoinDevKit
+import ColdSignerPSBT
 import Foundation
 
 public struct PSBTSigningResult: Equatable, Sendable {

@@ -1,4 +1,5 @@
 import Foundation
+import ColdSignerPSBT
 
 public struct MnemonicPhrase: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible {
     private let words: [String]

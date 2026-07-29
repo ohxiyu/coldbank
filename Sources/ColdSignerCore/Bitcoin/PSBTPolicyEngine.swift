@@ -1,4 +1,5 @@
 import BitcoinDevKit
+import ColdSignerPSBT
 import CryptoKit
 import Foundation
 

@@ -1,4 +1,4 @@
-.PHONY: bootstrap generate check core-test core-sanitizer release-audit test
+.PHONY: bootstrap generate check core-test psbt-sanitizer psbt-fuzz release-audit test
 
 bootstrap: generate check
 
@@ -12,8 +12,11 @@ check:
 core-test:
 	./scripts/run_core_tests.sh
 
-core-sanitizer:
-	./scripts/run_core_sanitizer.sh
+psbt-sanitizer:
+	./scripts/run_psbt_sanitizer.sh
+
+psbt-fuzz:
+	./scripts/run_psbt_fuzzer.sh
 
 release-audit:
 	./scripts/audit_release.sh

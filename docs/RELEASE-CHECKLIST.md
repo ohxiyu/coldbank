@@ -10,6 +10,7 @@ This checklist separates machine evidence from human/device evidence. A release 
 - [x] BC-UR and BBQr H/2/Z transport tests, bounds, cancellation, disorder, and format-confusion rejection.
 - [x] Deterministic testnet C03 unsigned/signed/semantic/optical fixture.
 - [x] Fifty varied deterministic software signing and optical transport round trips.
+- [x] Dependency-light strict PSBT parser has deterministic ASan and coverage-guided libFuzzer harnesses.
 - [x] First-party network/API/configuration guard.
 - [ ] Final app binary linked-framework, undefined-symbol, Info.plist, and entitlement audit on release commit.
 - [ ] Sanitizer/fuzzer run artifact attached to the release candidate.

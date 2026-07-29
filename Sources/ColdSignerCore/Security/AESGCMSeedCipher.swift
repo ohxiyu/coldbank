@@ -1,4 +1,5 @@
 import CryptoKit
+import ColdSignerPSBT
 import Foundation
 
 public struct AESGCMSeedCipher: Sendable {

@@ -27,6 +27,7 @@ required_documents=(
   docs/DEVICE-TEST-PLAN.md
   docs/EXTERNAL-REVIEW-SCOPE.md
   docs/ASSET-PROVENANCE.md
+  docs/FUZZING.md
 )
 for document in "${required_documents[@]}"; do
   if [[ ! -s "$document" ]]; then
@@ -34,6 +35,45 @@ for document in "${required_documents[@]}"; do
     exit 1
   fi
 done
+
+required_executables=(
+  scripts/run_psbt_sanitizer.sh
+  scripts/run_psbt_fuzzer.sh
+)
+for executable in "${required_executables[@]}"; do
+  if [[ ! -x "$executable" ]]; then
+    echo "error: missing or non-executable release test harness: $executable"
+    exit 1
+  fi
+done
+
+required_fuzz_sources=(
+  Sources/ColdSignerPSBT/StrictPSBTStructureParser.swift
+  Tests/ColdSignerPSBTFuzzer/Fuzzer.swift
+  Tests/ColdSignerPSBTSanitizerRunner/main.swift
+)
+for source in "${required_fuzz_sources[@]}"; do
+  if [[ ! -s "$source" ]]; then
+    echo "error: missing PSBT adversarial-test source: $source"
+    exit 1
+  fi
+done
+
+if rg --pcre2 --line-number 'uses:\s+[^@\s]+@(?![0-9a-f]{40}(?:\s|$))' \
+  .github/workflows; then
+  echo "error: GitHub Action is not pinned to a full commit digest"
+  exit 1
+fi
+if ! rg -q 'swift-6\.3\.3-RELEASE-osx\.pkg' .github/workflows/ci.yml \
+    || ! rg -q 'V9AUD2URP3' .github/workflows/ci.yml \
+    || ! rg -q 'Swift version 6\.3\.3' scripts/run_psbt_fuzzer.sh; then
+  echo "error: pinned, signature-checked PSBT fuzz toolchain configuration drifted"
+  exit 1
+fi
+if ! rg -q 'LLVMFuzzerTestOneInput' Tests/ColdSignerPSBTFuzzer/Fuzzer.swift; then
+  echo "error: libFuzzer entry point is missing"
+  exit 1
+fi
 
 json_documents=(
   docs/SBOM-v0.1.json
