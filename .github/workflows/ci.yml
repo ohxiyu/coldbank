@@ -12,7 +12,7 @@ jobs:
   repository-checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install ripgrep
         run: sudo apt-get update && sudo apt-get install --yes ripgrep
       - name: Validate repository policy
@@ -21,7 +21,7 @@ jobs:
   coordinator-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -40,7 +40,7 @@ jobs:
   core-tests:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Resolve pinned dependencies
         run: swift package resolve
       - name: Test ColdSignerCore
@@ -49,7 +49,7 @@ jobs:
   transport-tests:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Test bounded BC-UR transport
         run: >-
           swift test
@@ -59,7 +59,7 @@ jobs:
   ios-build:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate project
