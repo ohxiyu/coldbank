@@ -1,4 +1,4 @@
-.PHONY: bootstrap generate check core-test test
+.PHONY: bootstrap generate check core-test coordinator-test test
 
 bootstrap: generate check
 
@@ -11,6 +11,9 @@ check:
 
 core-test:
 	./scripts/run_core_tests.sh
+
+coordinator-test:
+	cd Coordinator && npm ci && npm run typecheck && npm test
 
 test: generate
 	xcodebuild test \
