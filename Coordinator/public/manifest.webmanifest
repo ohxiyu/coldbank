@@ -1,0 +1,11 @@
+{
+  "name": "Coldbank Bitcoin Coordinator",
+  "short_name": "Coldbank",
+  "description": "用在线 iPhone 创建交易，用离线 iPhone 检查和签名。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f1e8",
+  "theme_color": "#071810",
+  "lang": "zh-CN",
+  "scope": "/"
+}
