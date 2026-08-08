@@ -40,6 +40,73 @@ const JSON_HEADERS = {
   "x-content-type-options": "nosniff",
 };
 
+const MAX_UPSTREAM_BODY_BYTES = 5_000_000;
+
+function contentSecurityPolicy(nonce?: string): string {
+  const script = nonce
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`
+    : "script-src 'self'";
+  return [
+    "default-src 'self'",
+    script,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    "media-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+  ].join("; ");
+}
+
+function scriptNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes));
+}
+
+// Reads an upstream body while enforcing a byte budget, because
+// content-length is absent on chunked responses. Returns null when the
+// upstream exceeds the budget.
+async function readBoundedText(response: Response): Promise<string | null> {
+  const body = response.body;
+  if (!body) {
+    const text = await response.text();
+    return text.length > MAX_UPSTREAM_BODY_BYTES ? null : text;
+  }
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > MAX_UPSTREAM_BODY_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const merged = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(merged);
+}
+
+async function readBoundedJSON(response: Response): Promise<unknown | null> {
+  const text = await readBoundedText(response);
+  if (text === null) return null;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
+}
+
 function json(
   body: unknown,
   status = 200,
@@ -130,9 +197,9 @@ async function relayJSON(
         provider,
       );
     }
-    const length = Number(response.headers.get("content-length") ?? "0");
-    if (length > 5_000_000) return json({ error: "上游响应过大。" }, 502);
-    return json(await response.json(), 200, provider);
+    const value = await readBoundedJSON(response);
+    if (value === null) return json({ error: "上游响应过大或格式无效。" }, 502);
+    return json(value, 200, provider);
   } catch {
     return json({ error: "mempool.space 与备用服务暂时都不可用。" }, 503);
   }
@@ -153,8 +220,9 @@ async function relayText(
         provider,
       );
     }
-    const text = (await response.text()).trim();
-    if (text.length > 5_000_000) return json({ error: "上游响应过大。" }, 502);
+    const bounded = await readBoundedText(response);
+    if (bounded === null) return json({ error: "上游响应过大。" }, 502);
+    const text = bounded.trim();
     const headers = new Headers(JSON_HEADERS);
     headers.set("content-type", "text/plain; charset=utf-8");
     headers.set("x-coldbank-provider", provider.name);
@@ -173,7 +241,9 @@ async function feeResponse(
       headers: { accept: "application/json" },
     });
     if (response.ok) {
-      const value = (await response.json()) as Record<string, number>;
+      const parsed = await readBoundedJSON(response);
+      if (parsed === null) return json({ error: "费率服务响应无效。" }, 502, primary);
+      const value = parsed as Record<string, number>;
       return json(
         {
           fastest: Math.ceil(value.fastestFee),
@@ -201,7 +271,9 @@ async function feeResponse(
     if (!response.ok) {
       return json({ error: "备用费率服务不可用。" }, 503, fallback);
     }
-    const value = (await response.json()) as Record<string, number>;
+    const parsed = await readBoundedJSON(response);
+    if (parsed === null) return json({ error: "备用费率服务响应无效。" }, 502, fallback);
+    const value = parsed as Record<string, number>;
     const at = (...targets: string[]) =>
       Math.ceil(
         targets.map((target) => value[target]).find(Number.isFinite) ?? 1,
@@ -222,10 +294,35 @@ async function feeResponse(
   }
 }
 
+// Best-effort per-isolate rate limit for the only state-changing endpoint.
+// Cloudflare may run many isolates, so this bounds abuse per isolate only;
+// account-level rate limiting rules remain the outer control.
+const BROADCAST_RATE_LIMIT = 6;
+const BROADCAST_RATE_WINDOW_MS = 60_000;
+const broadcastHistory = new Map<string, number[]>();
+
+function broadcastAllowed(request: Request, now = Date.now()): boolean {
+  const client = request.headers.get("cf-connecting-ip") ?? "unknown";
+  const recent = (broadcastHistory.get(client) ?? []).filter(
+    (at) => now - at < BROADCAST_RATE_WINDOW_MS,
+  );
+  if (recent.length >= BROADCAST_RATE_LIMIT) {
+    broadcastHistory.set(client, recent);
+    return false;
+  }
+  recent.push(now);
+  if (broadcastHistory.size > 10_000) broadcastHistory.clear();
+  broadcastHistory.set(client, recent);
+  return true;
+}
+
 async function broadcast(
   request: Request,
   candidates: Provider[],
 ): Promise<Response> {
+  if (!broadcastAllowed(request)) {
+    return json({ error: "广播请求过于频繁，请稍后再试。" }, 429);
+  }
   const expectedTxid = request.headers.get("x-expected-txid")?.toLowerCase();
   if (!expectedTxid || !/^[0-9a-f]{64}$/.test(expectedTxid)) {
     return json({ error: "缺少有效的预期交易 ID。" }, 400);
@@ -362,10 +459,29 @@ const worker = {
       "permissions-policy",
       "camera=(self), geolocation=(), microphone=(), payment=(), usb=()",
     );
-    headers.set(
-      "content-security-policy",
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
-    );
+
+    const contentType = (headers.get("content-type") ?? "").toLowerCase();
+    if (contentType.includes("text/html")) {
+      // Framework HTML carries dynamic inline scripts, so hash-based CSP is
+      // impossible; stamp a per-request nonce on every script tag instead.
+      // Inline JSON payloads unicode-escape the "<" character, so the
+      // rewrite only touches real script tags.
+      const nonce = scriptNonce();
+      const html = (await response.text()).replace(
+        /<script(?=[\s>])/g,
+        `<script nonce="${nonce}"`,
+      );
+      headers.set("content-security-policy", contentSecurityPolicy(nonce));
+      headers.delete("content-length");
+      headers.delete("content-encoding");
+      return new Response(html, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    }
+
+    headers.set("content-security-policy", contentSecurityPolicy());
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,

@@ -3,6 +3,9 @@ import Foundation
 public protocol WalletVault: Sendable {
     func storedProfile() async throws -> WalletProfile?
     func store(_ setup: WalletSetup) async throws
+    /// Proves device-owner presence without decrypting the seed. UI unlock
+    /// must use this; only the signing path may call `unlock`.
+    func authenticate(localizedReason: String) async throws
     func unlock(localizedReason: String) async throws -> WalletSetup
     func wipe(localizedReason: String) async throws
 }

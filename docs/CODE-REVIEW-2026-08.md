@@ -2,6 +2,24 @@
 
 本文是对仓库 `main`（截至 commit `1077388`）的整体评审：总结现状、指出不足、给出改进路径，并回答"如何做到安全稳定的 iPhone 冷钱包方案"。发现按优先级排列，P0 为发布前必须处理，P1 为强烈建议，P2 为可择机改进。
 
+## 修复状态（2026-08）
+
+| 发现 | 状态 |
+|---|---|
+| P0-1 解锁不再解密种子 | ✅ 已修复：`WalletVault.authenticate` 与 `unlock` 分离 |
+| P0-2 review/sign UTXO 策略统一 | ✅ 已修复：规则前移到 `review()` |
+| P0-3 Secure Enclave 包裹 DEK | ✅ 已实现（ADR-0007）；真机 Keychain/SE 行为矩阵仍待 M1 验证 |
+| P1-1 CSP 移除 unsafe-inline script | ✅ 已修复：per-request nonce + strict-dynamic |
+| P1-2 上游响应限界 / 广播限速 | ✅ 已修复：流式字节预算 + per-isolate 限速 |
+| P1-3 禁网扫描盲区 / 二进制断言 | ✅ 已修复：扩展 pattern + `scripts/verify_release_binary.sh` |
+| P1-4 助记词经过 String | ⏸ 缓期：BDK 接口以 String 为边界，签名时连接串无法避免；等 BDK 提供字节 API 后收益才成立 |
+| P1-5 Debug 构建 testnet | ✅ 已修复：模型层 Release 强制主网 |
+| P2 entitlement | ✅ 已加 `default-data-protection` |
+| P2 备份抽验数量 | ✅ 24 词抽验 5 个 |
+| P2 地址验证 UI | ✅ 新增"验证收款地址"（任意索引离线派生） |
+| P2 profile 明文 ADR | ✅ ADR-0006 |
+| P2 BIP39 passphrase / 可配置锁定 / 费率阈值 | ⏸ 缓期：功能级改动，进 v0.2 路线图 |
+
 ---
 
 ## 一、总体评价

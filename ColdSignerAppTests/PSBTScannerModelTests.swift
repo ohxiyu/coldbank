@@ -39,6 +39,7 @@ final class PSBTScannerModelTests: XCTestCase {
 private actor NoopWalletVault: WalletVault {
     func storedProfile() async throws -> WalletProfile? { nil }
     func store(_ setup: WalletSetup) async throws {}
+    func authenticate(localizedReason: String) async throws {}
     func unlock(localizedReason: String) async throws -> WalletSetup {
         throw ColdSignerError.operationCancelled
     }

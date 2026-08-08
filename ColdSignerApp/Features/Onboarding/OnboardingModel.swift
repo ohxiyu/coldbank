@@ -16,6 +16,7 @@ final class OnboardingModel: ObservableObject {
     }
 
     @Published var step: Step = .welcome
+    @Published var selectedNetwork: WalletProfile.Network = .bitcoin
     @Published private(set) var pendingSetup: WalletSetup?
     @Published private(set) var backupChallenge: BackupChallenge?
     @Published var errorMessage: String?
@@ -42,9 +43,19 @@ final class OnboardingModel: ObservableObject {
         }
     }
 
+    // Release builds are hard-locked to mainnet; the Debug-only network
+    // switch exists so the M4 testnet round trip can run on a device.
+    private var effectiveNetwork: WalletProfile.Network {
+        #if DEBUG
+        selectedNetwork
+        #else
+        .bitcoin
+        #endif
+    }
+
     func createWallet(wordCount: Int) {
         do {
-            pendingSetup = try deriver.generate(wordCount: wordCount, network: .bitcoin)
+            pendingSetup = try deriver.generate(wordCount: wordCount, network: effectiveNetwork)
             backupChallenge = nil
             errorMessage = nil
             step = .seedDisplay
@@ -84,7 +95,7 @@ final class OnboardingModel: ObservableObject {
 
     func restoreWallet(words: [String]) {
         do {
-            pendingSetup = try deriver.restore(words: words, network: .bitcoin)
+            pendingSetup = try deriver.restore(words: words, network: effectiveNetwork)
             backupChallenge = nil
             errorMessage = nil
             step = .walletConfirmation

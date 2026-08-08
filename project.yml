@@ -34,6 +34,10 @@ targets:
         UILaunchScreen: {}
         NSCameraUsageDescription: ColdSigner uses the camera only to scan offline PSBT and wallet QR codes.
         UIApplicationSupportsIndirectInputEvents: true
+    entitlements:
+      path: ColdSignerApp/Resources/ColdSigner.entitlements
+      properties:
+        com.apple.developer.default-data-protection: NSFileProtectionComplete
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.coldsigner.app

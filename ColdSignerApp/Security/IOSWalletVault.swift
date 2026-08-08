@@ -60,6 +60,13 @@ actor IOSWalletVault: WalletVault {
         }
     }
 
+    func authenticate(localizedReason: String) async throws {
+        guard fileManager.fileExists(atPath: recordURL.path) else {
+            throw ColdSignerError.walletNotFound
+        }
+        try await authenticator.authenticate(localizedReason: localizedReason)
+    }
+
     func unlock(localizedReason: String) async throws -> WalletSetup {
         let record = try readRecord()
         var keyData = try keyStore.read(localizedReason: localizedReason)

@@ -24,6 +24,7 @@ struct OnboardingFlow: View {
                     )
                 case .setupChoice:
                     SetupChoiceView(
+                        network: $model.selectedNetwork,
                         create: { model.step = .createOptions },
                         restore: { model.step = .restoreOptions }
                     )
