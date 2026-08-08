@@ -54,6 +54,12 @@ struct HomeView: View {
                         }
 
                         NavigationLink {
+                            AddressVerificationView(profile: profile)
+                        } label: {
+                            HomeRow(title: "验证收款地址", systemImage: "checkmark.seal")
+                        }
+
+                        NavigationLink {
                             SecurityView(profile: profile, onLock: onLock, onWipe: onWipe)
                         } label: {
                             HomeRow(title: "安全与设置", systemImage: "lock.shield")

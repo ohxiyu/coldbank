@@ -82,6 +82,14 @@ public struct PSBTPolicyEngine: Sendable {
             )
             var totalInput: UInt64 = 0
             for index in bdkInputs.indices {
+                // The signer (and BDK with trustWitnessUtxo disabled) refuses
+                // witness-only inputs, so review must apply the same rule
+                // before the user is asked to approve anything.
+                guard structure.inputMaps[index].hasNonWitnessUTXO,
+                      structure.inputMaps[index].witnessUTXO != nil
+                else {
+                    throw ColdSignerError.policyViolation(.missingUTXO)
+                }
                 let utxo = try resolvedUTXO(
                     bdkInput: bdkInputs[index],
                     transactionInput: structure.transactionInputs[index]

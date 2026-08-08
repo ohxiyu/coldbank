@@ -7,7 +7,7 @@ source_roots=(
   "$repo_root/Sources"
 )
 
-banned_pattern='(^|[^A-Za-z])(import[[:space:]]+(Network|NetworkExtension|WebKit|CloudKit|MultipeerConnectivity)|URLSession|URLRequest|WKWebView|NWConnection|CFSocket|GCDAsyncSocket|MCSession|CKContainer)'
+banned_pattern='(^|[^A-Za-z])(import[[:space:]]+(Network|NetworkExtension|WebKit|CloudKit|MultipeerConnectivity)|URLSession|URLRequest|WKWebView|NWConnection|NWListener|CFSocket|CFStream|GCDAsyncSocket|MCSession|CKContainer|getaddrinfo|dlopen|socket\(|connect\()'
 
 if rg --line-number --glob '*.swift' --glob '*.m' --glob '*.mm' --glob '*.h' "$banned_pattern" "${source_roots[@]}"; then
   echo "error: first-party networking or cloud API found"

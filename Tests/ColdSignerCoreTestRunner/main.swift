@@ -639,19 +639,14 @@ private func runCoreTests() throws {
             }
         }
 
-        try runner.run("PSBT signer requires non-witness transaction") {
+        try runner.run("PSBT review requires non-witness transaction") {
             let setup = try deriver.restore(words: words, network: .bitcoin)
             let psbt = try makePolicyPSBT(
                 profile: setup.profile,
                 includeNonWitnessUTXO: false
             )
-            let review = try PSBTPolicyEngine().review(psbt: psbt, profile: setup.profile)
             try runner.expectColdSignerError(.policyViolation(.missingUTXO)) {
-                _ = try PSBTSigner().sign(
-                    psbt: psbt,
-                    reviewedAs: review,
-                    using: setup
-                )
+                _ = try PSBTPolicyEngine().review(psbt: psbt, profile: setup.profile)
             }
         }
 
@@ -703,10 +698,50 @@ private func runCoreTests() throws {
         }
 
         try runner.run("random backup challenge bounds") {
+            let short = try BackupChallenge(wordCount: 12)
+            try runner.expect(short.positions.count == 3, "unexpected 12-word challenge count")
             let challenge = try BackupChallenge(wordCount: 24)
-            try runner.expect(challenge.positions.count == 3, "unexpected challenge count")
-            try runner.expect(Set(challenge.positions).count == 3, "duplicate challenge positions")
+            try runner.expect(challenge.positions.count == 5, "unexpected 24-word challenge count")
+            try runner.expect(Set(challenge.positions).count == 5, "duplicate challenge positions")
             try runner.expect(challenge.positions.allSatisfy { 0..<24 ~= $0 }, "challenge position out of bounds")
+        }
+
+        try runner.run("address verification derives known BIP84 vectors") {
+            let setup = try deriver.restore(words: words, network: .bitcoin)
+            let firstReceive = try WalletAddressDeriver.address(
+                profile: setup.profile,
+                branch: .receive,
+                index: 0
+            )
+            try runner.expect(
+                firstReceive == setup.profile.firstReceiveAddress,
+                "receive index 0 does not match stored first address"
+            )
+            let secondReceive = try WalletAddressDeriver.address(
+                profile: setup.profile,
+                branch: .receive,
+                index: 1
+            )
+            try runner.expect(
+                secondReceive == "bc1qnjg0jd8228aq7egyzacy8cys3knf9xvrerkf9g",
+                "unexpected BIP84 receive index 1 address"
+            )
+            let firstChange = try WalletAddressDeriver.address(
+                profile: setup.profile,
+                branch: .change,
+                index: 0
+            )
+            try runner.expect(
+                firstChange == "bc1q8c6fshw2dlwun7ekn9qwf37cu2rn755upcp6el",
+                "unexpected BIP84 change index 0 address"
+            )
+            try runner.expectColdSignerError(.invalidWalletDescriptor) {
+                _ = try WalletAddressDeriver.address(
+                    profile: setup.profile,
+                    branch: .receive,
+                    index: WalletAddressDeriver.maximumVerificationIndex + 1
+                )
+            }
         }
 
     print("Core test runner passed \(runner.passed) checks.")

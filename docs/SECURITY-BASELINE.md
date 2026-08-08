@@ -37,7 +37,7 @@ The Secure Enclave supports Apple-selected algorithms and does not directly act 
 | Fee theft | Require all UTXO data; calculate fee locally; show sats and sat/vB | A valid but high fee can still be approved |
 | Unsupported signing semantics | Allowlist BIP84 P2WPKH + SIGHASH_ALL + PSBT v0 | Narrow compatibility |
 | QR parser denial/exploit | Payload/count/depth limits; strict parser; fuzz corpus | Camera/third-party decoder bugs remain |
-| Seed theft at rest | Encrypted secret file; ThisDeviceOnly Keychain key; complete file protection | Compromised OS or unlocked device can read memory |
+| Seed theft at rest | Encrypted secret file; Secure Enclave-wrapped DEK in ThisDeviceOnly Keychain; complete file protection | Compromised OS or unlocked device can read memory |
 | Seed leakage through OS features | No copy/share; no analytics/logs; privacy cover; backup exclusion | Screenshots and physical cameras cannot be guaranteed blocked |
 | Radio/network exfiltration | No networking code or entitlements; CI symbol scan; operational offline checklist | iOS and dependencies are still general-purpose software |
 | Dependency compromise | Exact version pinning, checksums/lockfile in release builds, review on bumps | Upstream or build-chain compromise remains |
@@ -49,7 +49,7 @@ The Secure Enclave supports Apple-selected algorithms and does not directly act 
 
 1. **Creation:** entropy comes from the selected audited library backed by the OS CSPRNG. No timestamps, gestures, camera images, or custom PRNG are mixed in.
 2. **Display:** mnemonic is displayed only during explicit create/backup. It is never placed in pasteboard, logs, accessibility custom actions, analytics, or share sheets.
-3. **Persistence:** serialize only the minimum seed material. Encrypt using AES-GCM with a random data-encryption key stored as a non-synchronizable Keychain item using a `ThisDeviceOnly` accessibility class and device-owner access control. Store ciphertext in an app-private, backup-excluded file with complete protection.
+3. **Persistence:** serialize only the minimum seed material. Encrypt using AES-GCM with a random data-encryption key that is itself wrapped by a Secure Enclave P-256 key (ECIES); the Keychain stores only the wrapped ciphertext as a non-synchronizable `ThisDeviceOnly` item, and unwrapping requires device-owner authentication against the enclave key. A device without a usable Secure Enclave blocks wallet activation instead of falling back to a software key (ADR-0007). Store seed ciphertext in an app-private, backup-excluded file with complete protection.
 4. **Unlock:** authenticate first, decrypt as late as possible, derive only needed keys, sign, and release references immediately.
 5. **Background/timeout:** cancel authentication, cover UI, destroy transaction/session state, and lock the wallet.
 6. **Wipe:** delete Keychain key and ciphertext, clear derived public cache and partial QR state. Document that flash wear leveling prevents a guarantee of physical overwriting; recommend full device erase on retirement.
@@ -75,7 +75,7 @@ Source and build controls:
 - no `Network`, `NetworkExtension`, `WebKit`, networking URLSession task APIs, sockets, Bonjour, MultipeerConnectivity, CloudKit, StoreKit, telemetry, or remote logging;
 - no background modes, associated domains, push notifications, local-network usage string, arbitrary-load exception, or iCloud entitlements;
 - a CI script scans first-party sources and project configuration for banned capabilities;
-- release review inspects linked frameworks and the final entitlements, not just imports;
+- release review inspects linked frameworks and the final entitlements, not just imports — `scripts/verify_release_binary.sh` asserts the built binary links no networking framework and references no socket-level symbols;
 - third-party dependencies are reviewed for runtime network behavior.
 
 Operational controls:

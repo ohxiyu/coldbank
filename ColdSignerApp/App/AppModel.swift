@@ -36,11 +36,14 @@ final class AppModel: ObservableObject {
     }
 
     func unlock() async {
+        guard case .locked(let profile) = phase else { return }
         do {
-            let setup = try await vault.unlock(
+            // Owner authentication only; the seed stays encrypted until the
+            // signing flow itself calls vault.unlock.
+            try await vault.authenticate(
                 localizedReason: "解锁 ColdSigner 离线签名器"
             )
-            phase = .ready(setup.profile)
+            phase = .ready(profile)
             scheduleAutoLock()
         } catch let error as ColdSignerError where error == .operationCancelled {
             return
@@ -101,6 +104,7 @@ final class AppModel: ObservableObject {
 actor PreviewWalletVault: WalletVault {
     func storedProfile() async throws -> WalletProfile? { nil }
     func store(_ setup: WalletSetup) async throws {}
+    func authenticate(localizedReason: String) async throws {}
     func unlock(localizedReason: String) async throws -> WalletSetup {
         throw ColdSignerError.walletNotFound
     }

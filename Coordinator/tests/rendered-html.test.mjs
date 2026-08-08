@@ -29,9 +29,16 @@ test("renders the Coldbank coordinator without starter content", async () => {
   );
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
-  assert.match(response.headers.get("content-security-policy") ?? "", /connect-src 'self'/);
+  const csp = response.headers.get("content-security-policy") ?? "";
+  assert.match(csp, /connect-src 'self'/);
+  assert.match(csp, /script-src 'self' 'nonce-[A-Za-z0-9+/]+=*' 'strict-dynamic'/);
+  assert.doesNotMatch(csp.split("style-src")[0], /'unsafe-inline'/);
 
   const html = await response.text();
+  const scriptTags = html.match(/<script[\s>]/g) ?? [];
+  const noncedTags = html.match(/<script nonce="/g) ?? [];
+  assert.ok(scriptTags.length > 0, "expected rendered scripts");
+  assert.equal(noncedTags.length, scriptTags.length);
   assert.match(html, /<html lang="zh-CN">/);
   assert.match(html, /Coldbank/);
   assert.match(html, /在线创建交易/);
@@ -75,6 +82,70 @@ test("falls back to Blockstream for fee estimates", async () => {
       source: "Blockstream",
     });
     assert.equal(calls.length, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("rejects an unbounded chunked upstream response", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    const chunk = new Uint8Array(1_000_000);
+    let sent = 0;
+    return new Response(
+      new ReadableStream({
+        pull(controller) {
+          if (sent >= 8) {
+            controller.close();
+            return;
+          }
+          sent += 1;
+          controller.enqueue(chunk);
+        },
+      }),
+      { status: 200 },
+    );
+  };
+  try {
+    const worker = await loadWorker();
+    const response = await worker.fetch(
+      new Request("http://localhost/api/chain/bitcoin/tip", {
+        headers: { "sec-fetch-site": "same-origin" },
+      }),
+      environment,
+      context,
+    );
+    assert.equal(response.status, 502);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("rate-limits repeated broadcasts from one client", async () => {
+  const originalFetch = globalThis.fetch;
+  const txid = "cd".repeat(32);
+  globalThis.fetch = async () => new Response(txid, { status: 200 });
+  try {
+    const worker = await loadWorker();
+    const send = () =>
+      worker.fetch(
+        new Request("http://localhost/api/chain/bitcoin/broadcast", {
+          method: "POST",
+          headers: {
+            "sec-fetch-site": "same-origin",
+            "x-expected-txid": txid,
+            "cf-connecting-ip": "192.0.2.7",
+            "content-type": "text/plain",
+          },
+          body: "02000000000100",
+        }),
+        environment,
+        context,
+      );
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      assert.equal((await send()).status, 200);
+    }
+    assert.equal((await send()).status, 429);
   } finally {
     globalThis.fetch = originalFetch;
   }
